@@ -11,9 +11,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('On-screen Keyboard Demo'), findsOneWidget);
+    expect(find.text('Showcase'), findsOneWidget);
+    expect(find.text('Custom keyboard'), findsOneWidget);
+    expect(find.text('Numeric keyboard'), findsOneWidget);
     expect(find.text('Name'), findsOneWidget);
     expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Memo'), findsOneWidget);
+    expect(find.text('Access code'), findsOneWidget);
     expect(find.text('Amount'), findsOneWidget);
+    expect(find.text('Age (18 – 60)'), findsOneWidget);
+    expect(find.text('Quantity (1 – 200)'), findsOneWidget);
   });
 }
 

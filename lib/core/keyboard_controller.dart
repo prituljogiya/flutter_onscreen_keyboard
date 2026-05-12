@@ -7,6 +7,11 @@ class KeyboardController extends GetxController {
   final VoidCallback? onEnterPressed;
   final String? Function(String)? validator;
 
+  /// When set, [insertText] refuses input that would make the text longer than
+  /// this (replacing a selection can still shrink or swap characters). Use the
+  /// same value as [TextField.maxLength] and pass it to [CustomKeyboard.maxLength].
+  int? maxLength;
+
   final RxBool _isShiftActive = false.obs;
   final RxBool _isCapsLock = false.obs;
   final RxBool _isNumericMode = false.obs;
@@ -27,6 +32,7 @@ class KeyboardController extends GetxController {
     required this.focusNode,
     this.onEnterPressed,
     this.validator,
+    this.maxLength,
   }) {
     textController.addListener(_onTextChanged);
   }
@@ -38,25 +44,31 @@ class KeyboardController extends GetxController {
   }
 
   void insertText(String text) {
+    if (text.isEmpty) return;
+
     final currentText = textController.text;
     final selection = textController.selection;
 
+    final String newText;
+    final int newSelectionOffset;
+
     if (!selection.isValid) {
-      textController.text = currentText + text;
-      textController.selection = TextSelection.collapsed(
-        offset: textController.text.length,
-      );
+      newText = currentText + text;
+      newSelectionOffset = newText.length;
     } else {
-      final newText = currentText.replaceRange(
-        selection.start,
-        selection.end,
-        text,
-      );
-      textController.text = newText;
-      textController.selection = TextSelection.collapsed(
-        offset: selection.start + text.length,
-      );
+      newText = currentText.replaceRange(selection.start, selection.end, text);
+      newSelectionOffset = selection.start + text.length;
     }
+
+    final limit = maxLength;
+    if (limit != null && newText.length > limit) {
+      return;
+    }
+
+    textController.text = newText;
+    textController.selection = TextSelection.collapsed(
+      offset: newSelectionOffset,
+    );
 
     if (_isShiftActive.value && !_isCapsLock.value) {
       _isShiftActive.value = false;

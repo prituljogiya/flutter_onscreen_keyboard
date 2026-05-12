@@ -25,6 +25,12 @@ class DraggableDynamicKeyboard extends StatefulWidget {
   final int? numericMinValue;
   final int? numericMaxValue;
 
+  /// Passed to [CustomKeyboard] when [useNumericKeyboard] is false.
+  final int? maxLength;
+
+  /// Passed to the active keyboard; runs after unfocus on outside tap.
+  final VoidCallback? onTapOutside;
+
   const DraggableDynamicKeyboard({
     super.key,
     required this.controller,
@@ -46,6 +52,8 @@ class DraggableDynamicKeyboard extends StatefulWidget {
     this.useNumericKeyboard = false,
     this.numericMinValue,
     this.numericMaxValue,
+    this.maxLength,
+    this.onTapOutside,
   });
 
   @override
@@ -311,6 +319,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                       height: keyboardHeight,
                       minValue: widget.numericMinValue,
                       maxValue: widget.numericMaxValue,
+                      onTapOutside: widget.onTapOutside,
                     )
                   : CustomKeyboard(
                       controller: widget.controller,
@@ -320,6 +329,8 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                       validator: widget.validator,
                       commitOnEnterOnly: widget.commitOnEnterOnly,
                       height: keyboardHeight,
+                      maxLength: widget.maxLength,
+                      onTapOutside: widget.onTapOutside,
                     ),
             ),
           ],

@@ -16,6 +16,14 @@ class CustomKeyboard extends StatefulWidget {
   final bool commitOnEnterOnly;
   final double? height;
 
+  /// Same value as a host [TextField.maxLength], if any. Stops further typing
+  /// on the custom keyboard once the (preview) text reaches this length.
+  final int? maxLength;
+
+  /// Called after [focusNode.unfocus] when the user taps outside this keyboard
+  /// (e.g. to hide an overlay). Optional.
+  final VoidCallback? onTapOutside;
+
   const CustomKeyboard({
     super.key,
     required this.controller,
@@ -25,6 +33,8 @@ class CustomKeyboard extends StatefulWidget {
     this.validator,
     this.commitOnEnterOnly = false,
     this.height,
+    this.maxLength,
+    this.onTapOutside,
   });
 
   @override
@@ -51,11 +61,13 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     final tag = widget.focusNode.hashCode.toString();
     if (Get.isRegistered<KeyboardController>(tag: tag)) {
       _keyboardController = Get.find<KeyboardController>(tag: tag);
+      _keyboardController.maxLength = widget.maxLength;
     } else {
       _keyboardController = KeyboardController(
         textController: _inputController,
         focusNode: widget.focusNode,
         validator: widget.validator,
+        maxLength: widget.maxLength,
       );
       Get.put(_keyboardController, tag: tag);
     }
@@ -69,6 +81,9 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
       _inputController.selection = TextSelection.collapsed(
         offset: _inputController.text.length,
       );
+    }
+    if (widget.maxLength != oldWidget.maxLength) {
+      _keyboardController.maxLength = widget.maxLength;
     }
   }
 
@@ -110,6 +125,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     return TapRegion(
       onTapOutside: (_) {
         widget.focusNode.unfocus();
+        widget.onTapOutside?.call();
       },
       child: Obx(() {
         final layout = _keyboardController.currentLayout;
@@ -132,7 +148,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
               final previewMargin = isLandscape ? 6.0 : 8.0;
               final horizontalPadding = isLandscape ? 3.0 : 4.0;
               final validationHeight =
-              _keyboardController.validationError == null ? 0.0 : 22.0;
+                  _keyboardController.validationError == null ? 0.0 : 22.0;
 
               // Keys add vertical margin (keySpacing) outside [height] — must fit inside row.
               final keyVertInset = theme.keySpacing;
@@ -141,15 +157,13 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
               final previewBlock =
                   previewHeight + (previewMargin * 2) + layoutSafety;
               final availableForRows =
-              (constraints.maxHeight - previewBlock - validationHeight)
-                  .clamp(
-                0.0,
-                double.infinity,
-              );
+                  (constraints.maxHeight - previewBlock - validationHeight)
+                      .clamp(0.0, double.infinity);
 
               final rowCount = layout.length;
-              final maxPerRow =
-              rowCount > 0 ? availableForRows / rowCount : availableForRows;
+              final maxPerRow = rowCount > 0
+                  ? availableForRows / rowCount
+                  : availableForRows;
 
               // Never clamp *up* past available space (that caused bottom overflow in landscape).
               final maxRowCap = isLandscape ? 44.0 : 56.0;
@@ -222,12 +236,12 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   }
 
   Widget _buildAlphanumericKeyboard(
-      List<List<String>> layout,
-      KeyboardTheme theme, {
-        required double rowHeight,
-        required double keyBodyHeight,
-        required double horizontalPadding,
-      }) {
+    List<List<String>> layout,
+    KeyboardTheme theme, {
+    required double rowHeight,
+    required double keyBodyHeight,
+    required double horizontalPadding,
+  }) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: layout.map((row) {
@@ -254,12 +268,12 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   }
 
   Widget _buildKey(
-      String key,
-      KeyboardTheme theme,
-      int rowKeyCount, {
-        required double rowHeight,
-        required double keyBodyHeight,
-      }) {
+    String key,
+    KeyboardTheme theme,
+    int rowKeyCount, {
+    required double rowHeight,
+    required double keyBodyHeight,
+  }) {
     bool isSpecial = false;
     bool isActive = false;
     bool isWide = false;
@@ -347,8 +361,9 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
       default:
         onTap = () {
           if (isDual) {
-            final valueToInsert = (_keyboardController.isShiftActive ||
-                _keyboardController.isCapsLock)
+            final valueToInsert =
+                (_keyboardController.isShiftActive ||
+                    _keyboardController.isCapsLock)
                 ? topChar
                 : bottomChar;
             _keyboardController.insertText(valueToInsert);

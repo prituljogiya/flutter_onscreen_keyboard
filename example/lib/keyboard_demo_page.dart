@@ -14,6 +14,11 @@ class KeyboardDemoPage extends StatefulWidget {
 class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
   static const int _amountMin = 10;
   static const int _amountMax = 500;
+  static const int _ageMin = 18;
+  static const int _ageMax = 60;
+  static const int _quantityMin = 1;
+  static const int _quantityMax = 200;
+  static const int _nameMaxLength = 24;
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -74,22 +79,13 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
     focusNode.requestFocus();
   }
 
-  String? _ageValidator(String value) {
-    if (value.isEmpty) return 'Age is required';
-    final age = int.tryParse(value);
-    if (age == null) return 'Age must be a whole number';
-    if (age < 18 || age > 60) return 'Age must be between 18 and 60';
-    return null;
-  }
-
-  String? _quantityValidator(String value) {
-    if (value.isEmpty) return 'Quantity is required';
-    final quantity = int.tryParse(value);
-    if (quantity == null) return 'Quantity must be a number';
-    if (quantity < 1 || quantity > 200) {
-      return 'Quantity must be between 1 and 200';
-    }
-    return null;
+  void _dismissKeyboardOverlay() {
+    if (!mounted) return;
+    setState(() {
+      _activeController = null;
+      _activeFocusNode = null;
+      _useNumericKeyboard = false;
+    });
   }
 
   String? _pinValidator(String value) {
@@ -99,14 +95,13 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
     return null;
   }
 
-  String? Function(String)? alphaValidator() {
-    if (_activeFocusNode == _ageFocus) return _ageValidator;
-    if (_activeFocusNode == _quantityFocus) return _quantityValidator;
+  String? Function(String)? numericValidator() {
+    if (_activeFocusNode == _pinFocus) return _pinValidator;
     return null;
   }
 
-  String? Function(String)? numericValidator() {
-    if (_activeFocusNode == _pinFocus) return _pinValidator;
+  int? alphaMaxLength() {
+    if (_activeFocusNode == _nameFocus) return _nameMaxLength;
     return null;
   }
 
@@ -117,106 +112,118 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
 
     int? numericKeyboardMin;
     int? numericKeyboardMax;
-    if (_useNumericKeyboard &&
-        _activeFocusNode != null &&
-        _activeFocusNode == _amountFocus) {
-      numericKeyboardMin = _amountMin;
-      numericKeyboardMax = _amountMax;
+    if (_useNumericKeyboard && _activeFocusNode != null) {
+      if (_activeFocusNode == _amountFocus) {
+        numericKeyboardMin = _amountMin;
+        numericKeyboardMax = _amountMax;
+      } else if (_activeFocusNode == _ageFocus) {
+        numericKeyboardMin = _ageMin;
+        numericKeyboardMax = _ageMax;
+      } else if (_activeFocusNode == _quantityFocus) {
+        numericKeyboardMin = _quantityMin;
+        numericKeyboardMax = _quantityMax;
+      }
     }
 
-    final formContent = ListView(
+    final formContent = SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      children: [
-        _ShowcaseIntroCard(isLandscape: isLandscape),
-        const SizedBox(height: 20),
-        Text(
-          'Custom keyboard',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Letters, numbers row, Caps, and symbols. Typed text stays in a '
-          'preview until you press Enter (then it commits to the field). '
-          'Age and Quantity add custom validation on commit.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ShowcaseIntroCard(isLandscape: isLandscape),
+          const SizedBox(height: 20),
+          Text(
+            'Custom keyboard',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
-        ),
-        const SizedBox(height: 12),
-        _buildReadOnlyField(
-          label: 'Name',
-          hint: 'Plain text, no extra rules',
-          controller: _nameController,
-          focusNode: _nameFocus,
-          onTap: () => _activateAlpha(_nameController, _nameFocus),
-        ),
-        const SizedBox(height: 12),
-        _buildReadOnlyField(
-          label: 'Email',
-          hint: 'Same keyboard — preview, then Enter',
-          controller: _emailController,
-          focusNode: _emailFocus,
-          onTap: () => _activateAlpha(_emailController, _emailFocus),
-        ),
-        const SizedBox(height: 12),
-        _buildReadOnlyField(
-          label: 'Memo',
-          hint: 'Longer free text on the alpha keyboard',
-          controller: _memoController,
-          focusNode: _memoFocus,
-          onTap: () => _activateAlpha(_memoController, _memoFocus),
-        ),
-        const SizedBox(height: 12),
-        _buildReadOnlyField(
-          label: 'Age (18 – 60)',
-          hint: 'Validator: whole number in range',
-          controller: _ageController,
-          focusNode: _ageFocus,
-          onTap: () => _activateAlpha(_ageController, _ageFocus),
-        ),
-        const SizedBox(height: 12),
-        _buildReadOnlyField(
-          label: 'Quantity (1 – 200)',
-          hint: 'Another validated alpha commit',
-          controller: _quantityController,
-          focusNode: _quantityFocus,
-          onTap: () => _activateAlpha(_quantityController, _quantityFocus),
-        ),
-        const SizedBox(height: 28),
-        Text(
-          'Numeric keyboard',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Digits only. You can use it with no range (Access code), or with '
-          'Min / Max shown on the keyboard (Amount). Enter commits when valid.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          const SizedBox(height: 6),
+          Text(
+            'Letters, numbers row, Caps, and symbols. Typed text stays in a '
+            'preview until you press Enter (then it commits to the field). '
+            'Name uses maxLength ($_nameMaxLength); the keyboard stops adding '
+            'characters once the preview reaches that length.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        _buildReadOnlyField(
-          label: 'Access code',
-          hint: '4 digits — no min/max on keyboard, custom rule on Enter',
-          controller: _pinController,
-          focusNode: _pinFocus,
-          onTap: () => _activateNumeric(_pinController, _pinFocus),
-        ),
-        const SizedBox(height: 12),
-        _buildReadOnlyField(
-          label: 'Amount',
-          hint:
-              'Min / max $_amountMin–$_amountMax on keyboard; Enter must pass range',
-          controller: _amountController,
-          focusNode: _amountFocus,
-          onTap: () => _activateNumeric(_amountController, _amountFocus),
-        ),
-      ],
+          const SizedBox(height: 12),
+          _buildReadOnlyField(
+            label: 'Name',
+            hint: 'Max $_nameMaxLength characters (field + keyboard)',
+            controller: _nameController,
+            focusNode: _nameFocus,
+            maxLength: _nameMaxLength,
+            onTap: () => _activateAlpha(_nameController, _nameFocus),
+          ),
+          const SizedBox(height: 12),
+          _buildReadOnlyField(
+            label: 'Email',
+            hint: 'Same keyboard — preview, then Enter',
+            controller: _emailController,
+            focusNode: _emailFocus,
+            onTap: () => _activateAlpha(_emailController, _emailFocus),
+          ),
+          const SizedBox(height: 12),
+          _buildReadOnlyField(
+            label: 'Memo',
+            hint: 'Longer free text on the alpha keyboard',
+            controller: _memoController,
+            focusNode: _memoFocus,
+            onTap: () => _activateAlpha(_memoController, _memoFocus),
+          ),
+          const SizedBox(height: 28),
+          Text(
+            'Numeric keyboard',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Digits only. Age and Quantity use Min / Max on the keyboard. '
+            'Access code has no range (custom rule). Amount uses its own range. '
+            'Enter commits when valid.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildReadOnlyField(
+            label: 'Age ($_ageMin – $_ageMax)',
+            hint: 'Numeric keyboard — range on keys',
+            controller: _ageController,
+            focusNode: _ageFocus,
+            onTap: () => _activateNumeric(_ageController, _ageFocus),
+          ),
+          const SizedBox(height: 12),
+          _buildReadOnlyField(
+            label: 'Quantity ($_quantityMin – $_quantityMax)',
+            hint: 'Numeric keyboard — range on keys',
+            controller: _quantityController,
+            focusNode: _quantityFocus,
+            onTap: () => _activateNumeric(_quantityController, _quantityFocus),
+          ),
+          const SizedBox(height: 12),
+          _buildReadOnlyField(
+            label: 'Access code',
+            hint: '4 digits — no min/max on keyboard, custom rule on Enter',
+            controller: _pinController,
+            focusNode: _pinFocus,
+            onTap: () => _activateNumeric(_pinController, _pinFocus),
+          ),
+          const SizedBox(height: 12),
+          _buildReadOnlyField(
+            label: 'Amount',
+            hint:
+                'Min / max $_amountMin–$_amountMax on keyboard; Enter must pass range',
+            controller: _amountController,
+            focusNode: _amountFocus,
+            onTap: () => _activateNumeric(_amountController, _amountFocus),
+          ),
+        ],
+      ),
     );
 
     return Scaffold(
@@ -229,7 +236,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
                       focusNode: _activeFocusNode!,
                       validator: _useNumericKeyboard
                           ? numericValidator()
-                          : alphaValidator(),
+                          : null,
                       numericMinValue: numericKeyboardMin,
                       numericMaxValue: numericKeyboardMax,
                       widthFactor: 0.5,
@@ -238,14 +245,10 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
                       alwaysVisible: true,
                       pushContent: false,
                       useNumericKeyboard: _useNumericKeyboard,
+                      maxLength: _useNumericKeyboard ? null : alphaMaxLength(),
+                      onTapOutside: _dismissKeyboardOverlay,
+                      onEnterPressed: _dismissKeyboardOverlay,
                       child: formContent,
-                      onEnterPressed: () {
-                        setState(() {
-                          _activeController = null;
-                          _activeFocusNode = null;
-                          _useNumericKeyboard = false;
-                        });
-                      },
                     )
                   : Column(
                       children: [
@@ -258,27 +261,17 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
                             minValue: numericKeyboardMin,
                             maxValue: numericKeyboardMax,
                             validator: numericValidator(),
-                            onEnterPressed: () {
-                              setState(() {
-                                _activeController = null;
-                                _activeFocusNode = null;
-                                _useNumericKeyboard = false;
-                              });
-                            },
+                            onTapOutside: _dismissKeyboardOverlay,
+                            onEnterPressed: _dismissKeyboardOverlay,
                           )
                         else
                           CustomKeyboard(
                             controller: _activeController!,
                             focusNode: _activeFocusNode!,
                             commitOnEnterOnly: true,
-                            validator: alphaValidator(),
-                            onEnterPressed: () {
-                              setState(() {
-                                _activeController = null;
-                                _activeFocusNode = null;
-                                _useNumericKeyboard = false;
-                              });
-                            },
+                            maxLength: alphaMaxLength(),
+                            onTapOutside: _dismissKeyboardOverlay,
+                            onEnterPressed: _dismissKeyboardOverlay,
                           ),
                       ],
                     ))
@@ -293,6 +286,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
     required TextEditingController controller,
     required FocusNode focusNode,
     required VoidCallback onTap,
+    int? maxLength,
   }) {
     return TextField(
       controller: controller,
@@ -300,6 +294,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
       readOnly: true,
       showCursor: true,
       onTap: onTap,
+      maxLength: maxLength,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -350,8 +345,8 @@ class _ShowcaseIntroCard extends StatelessWidget {
             const _Bullet(
               icon: Icons.touch_app_outlined,
               text:
-                  'Dismiss by pressing Enter after a valid commit, or tap '
-                  'outside the keys.',
+                  'Dismiss with Enter after a valid commit, or tap outside the '
+                  'keyboard (the form area above it) to close without committing.',
             ),
           ],
         ),

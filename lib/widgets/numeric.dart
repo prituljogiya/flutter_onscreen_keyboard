@@ -19,6 +19,9 @@ class NumericKeyboard extends StatefulWidget {
   final int? minValue;
   final int? maxValue;
 
+  /// Called after [focusNode.unfocus] when the user taps outside this keyboard.
+  final VoidCallback? onTapOutside;
+
   const NumericKeyboard({
     super.key,
     required this.controller,
@@ -31,6 +34,7 @@ class NumericKeyboard extends StatefulWidget {
     this.height,
     this.minValue,
     this.maxValue,
+    this.onTapOutside,
   });
 
   @override
@@ -134,146 +138,161 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     final resolvedHeight =
         widget.height ?? media.size.height * (isLandscape ? 0.42 : 0.38);
 
-    return Obx(() {
-      return Container(
-        height: resolvedHeight,
-        decoration: const BoxDecoration(color: Color(0xFF2D004D)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Display area - full width
-            Container(
-              height: isLandscape ? 60 : 72,
-              margin: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.centerLeft,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(0),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: ValueListenableBuilder<TextEditingValue>(
-                valueListenable: _inputController,
-                builder: (context, value, _) {
-                  return Text(
-                    value.text,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isLandscape ? 28 : 32,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  );
-                },
-              ),
-            ),
-            // Validation error
-            if (_keyboardController.validationError != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 2,
+    return TapRegion(
+      onTapOutside: (_) {
+        widget.focusNode.unfocus();
+        widget.onTapOutside?.call();
+      },
+      child: Obx(() {
+        return Container(
+          height: resolvedHeight,
+          decoration: const BoxDecoration(color: Color(0xFF2D004D)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Display area - full width
+              Container(
+                height: isLandscape ? 60 : 72,
+                margin: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                alignment: Alignment.centerLeft,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(0),
+                  border: Border.all(color: Colors.white24),
                 ),
-                child: Text(
-                  _keyboardController.validationError!,
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-                ),
-              ),
-            // Main content: keypad + min/max side panel
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Left side: Keypad
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: _buildDigitRow(const ['1', '2', '3']),
-                          ),
-                          const SizedBox(height: 6),
-                          Expanded(
-                            child: _buildDigitRow(const ['4', '5', '6']),
-                          ),
-                          const SizedBox(height: 6),
-                          Expanded(
-                            child: _buildDigitRow(const ['7', '8', '9']),
-                          ),
-                          const SizedBox(height: 6),
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    child: _clearKey(),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    child: _buildDigitKey('0'),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    child: _decimalKey(),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Expanded(child: _enterKey()),
-                                const SizedBox(width: 8),
-                                Expanded(child: _cancelKey()),
-                              ],
-                            ),
-                          ),
-                        ],
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _inputController,
+                  builder: (context, value, _) {
+                    return Text(
+                      value.text,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isLandscape ? 28 : 32,
+                        fontWeight: FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    );
+                  },
+                ),
+              ),
+              // Validation error
+              if (_keyboardController.validationError != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 2,
+                  ),
+                  child: Text(
+                    _keyboardController.validationError!,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 12,
                     ),
-                    // Right side: Min/Max values (only when bounds are set)
-                    if (widget.minValue != null || widget.maxValue != null)
+                  ),
+                ),
+              // Main content: keypad + min/max side panel
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Left side: Keypad
                       Expanded(
-                        flex: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (widget.minValue != null) ...[
-                                _boundField('Min Value', '${widget.minValue}'),
-                                const SizedBox(height: 4),
-                              ],
-                              if (widget.maxValue != null)
-                                _boundField('Max Value', '${widget.maxValue}'),
-                            ],
-                          ),
+                        flex: 3,
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: _buildDigitRow(const ['1', '2', '3']),
+                            ),
+                            const SizedBox(height: 6),
+                            Expanded(
+                              child: _buildDigitRow(const ['4', '5', '6']),
+                            ),
+                            const SizedBox(height: 6),
+                            Expanded(
+                              child: _buildDigitRow(const ['7', '8', '9']),
+                            ),
+                            const SizedBox(height: 6),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      child: _clearKey(),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      child: _buildDigitKey('0'),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      child: _decimalKey(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Expanded(child: _enterKey()),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: _cancelKey()),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                  ],
+                      // Right side: Min/Max values (only when bounds are set)
+                      if (widget.minValue != null || widget.maxValue != null)
+                        Expanded(
+                          flex: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (widget.minValue != null) ...[
+                                  _boundField(
+                                    'Min Value',
+                                    '${widget.minValue}',
+                                  ),
+                                  const SizedBox(height: 4),
+                                ],
+                                if (widget.maxValue != null)
+                                  _boundField(
+                                    'Max Value',
+                                    '${widget.maxValue}',
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    });
+            ],
+          ),
+        );
+      }),
+    );
   }
 
   Widget _boundField(String label, String value) {
