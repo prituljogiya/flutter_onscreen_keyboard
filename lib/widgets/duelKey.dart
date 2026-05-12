@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../core/theme_controller.dart';
 
+import 'package:flutter/material.dart';
+
+import '../core/theme_controller.dart';
+
 class DualKey extends StatefulWidget {
   final String topChar;
   final String bottomChar;
@@ -185,19 +189,19 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
             ),
             boxShadow: _isPressed
                 ? [
-                    BoxShadow(
-                      color: widget.theme.shadowColor.withOpacity(0.3),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
+              BoxShadow(
+                color: widget.theme.shadowColor.withOpacity(0.3),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ]
                 : [
-                    BoxShadow(
-                      color: widget.theme.shadowColor.withOpacity(0.4),
-                      blurRadius: widget.theme.keyElevation * 2,
-                      offset: Offset(0, widget.theme.keyElevation),
-                    ),
-                  ],
+              BoxShadow(
+                color: widget.theme.shadowColor.withOpacity(0.4),
+                blurRadius: widget.theme.keyElevation * 2,
+                offset: Offset(0, widget.theme.keyElevation),
+              ),
+            ],
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {

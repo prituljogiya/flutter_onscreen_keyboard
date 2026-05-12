@@ -81,7 +81,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     if (widget.minValue == null && widget.maxValue == null) return null;
     final n = int.tryParse(value);
     if (n == null) {
-      return 'Enter a whole number';
+      return 'Enter a number';
     }
     if (widget.minValue != null && n < widget.minValue!) {
       return 'Must be >= ${widget.minValue}';
@@ -139,16 +139,17 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         height: resolvedHeight,
         decoration: const BoxDecoration(color: Color(0xFF2D004D)),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Display area - full width
             Container(
-              height: isLandscape ? 44 : 52,
-              margin: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              height: isLandscape ? 60 : 72,
+              margin: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               alignment: Alignment.centerLeft,
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(0),
                 border: Border.all(color: Colors.white24),
               ),
               child: ValueListenableBuilder<TextEditingValue>(
@@ -158,7 +159,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                     value.text,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: isLandscape ? 22 : 26,
+                      fontSize: isLandscape ? 28 : 32,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -167,20 +168,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                 },
               ),
             ),
-            if (widget.minValue != null || widget.maxValue != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                child: Row(
-                  children: [
-                    if (widget.minValue != null)
-                      Expanded(child: _boundChip('Min', '${widget.minValue}')),
-                    if (widget.minValue != null && widget.maxValue != null)
-                      const SizedBox(width: 8),
-                    if (widget.maxValue != null)
-                      Expanded(child: _boundChip('Max', '${widget.maxValue}')),
-                  ],
-                ),
-              ),
+            // Validation error
             if (_keyboardController.validationError != null)
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -192,57 +180,92 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                   style: const TextStyle(color: Colors.redAccent, fontSize: 12),
                 ),
               ),
+            // Main content: keypad + min/max side panel
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
-                child: Column(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(child: _buildDigitRow(const ['1', '2', '3'])),
-                    const SizedBox(height: 6),
-                    Expanded(child: _buildDigitRow(const ['4', '5', '6'])),
-                    const SizedBox(height: 6),
-                    Expanded(child: _buildDigitRow(const ['7', '8', '9'])),
-                    const SizedBox(height: 6),
+                    // Left side: Keypad
                     Expanded(
-                      child: Row(
+                      flex: 3,
+                      child: Column(
                         children: [
                           Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: _clearKey(),
+                            child: _buildDigitRow(const ['1', '2', '3']),
+                          ),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: _buildDigitRow(const ['4', '5', '6']),
+                          ),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: _buildDigitRow(const ['7', '8', '9']),
+                          ),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: _clearKey(),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: _buildDigitKey('0'),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: _decimalKey(),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                          const SizedBox(height: 6),
                           Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: _buildDigitKey('0'),
-                            ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: _decimalKey(),
+                            child: Row(
+                              children: [
+                                Expanded(child: _enterKey()),
+                                const SizedBox(width: 8),
+                                Expanded(child: _cancelKey()),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(child: _enterKey()),
-                          const SizedBox(width: 8),
-                          Expanded(child: _cancelKey()),
-                        ],
+                    // Right side: Min/Max values (only when bounds are set)
+                    if (widget.minValue != null || widget.maxValue != null)
+                      Expanded(
+                        flex: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (widget.minValue != null) ...[
+                                _boundField('Min Value', '${widget.minValue}'),
+                                const SizedBox(height: 4),
+                              ],
+                              if (widget.maxValue != null)
+                                _boundField('Max Value', '${widget.maxValue}'),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -253,14 +276,8 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     });
   }
 
-  Widget _boundChip(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.22),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white24),
-      ),
+  Widget _boundField(String label, String value) {
+    return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -269,17 +286,28 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
             label,
             style: const TextStyle(
               color: Color(0xFF00E5D4),
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
+          const SizedBox(height: 4),
+          Container(
+            height: 48,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.22),
+              borderRadius: BorderRadius.circular(0),
+              border: Border.all(color: Colors.white24),
+            ),
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],

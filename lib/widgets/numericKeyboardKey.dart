@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class NumericKey extends StatefulWidget {
   final VoidCallback onTap;
@@ -16,7 +17,8 @@ class NumericKey extends StatefulWidget {
   State<NumericKey> createState() => _NumericKeyState();
 }
 
-class _NumericKeyState extends State<NumericKey> with SingleTickerProviderStateMixin {
+class _NumericKeyState extends State<NumericKey>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   bool _isPressed = false;
@@ -68,7 +70,8 @@ class _NumericKeyState extends State<NumericKey> with SingleTickerProviderStateM
         onTapUp: _handleTapUp,
         onTapCancel: _handleTapCancel,
         child: Container(
-          height: 55,
+          height: 48,
+          width: 48,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,

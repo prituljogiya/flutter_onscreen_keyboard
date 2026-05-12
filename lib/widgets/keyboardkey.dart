@@ -108,7 +108,7 @@ class _KeyboardKeyState extends State<KeyboardKey>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: widget.theme.keyBackgroundColor,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(0),
                   boxShadow: [
                     BoxShadow(
                       color: widget.theme.shadowColor,
@@ -127,7 +127,7 @@ class _KeyboardKeyState extends State<KeyboardKey>
                       },
                       child: Container(
                         margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(0),
                         decoration: BoxDecoration(
                           color: widget.theme.activeKeyColor,
                           borderRadius: BorderRadius.circular(8),
@@ -265,19 +265,19 @@ class _KeyboardKeyState extends State<KeyboardKey>
             ),
             boxShadow: _isPressed
                 ? [
-                    BoxShadow(
-                      color: widget.theme.shadowColor.withOpacity(0.3),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
+              BoxShadow(
+                color: widget.theme.shadowColor.withOpacity(0.3),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ]
                 : [
-                    BoxShadow(
-                      color: widget.theme.shadowColor.withOpacity(0.4),
-                      blurRadius: widget.theme.keyElevation * 2,
-                      offset: Offset(0, widget.theme.keyElevation),
-                    ),
-                  ],
+              BoxShadow(
+                color: widget.theme.shadowColor.withOpacity(0.4),
+                blurRadius: widget.theme.keyElevation * 2,
+                offset: Offset(0, widget.theme.keyElevation),
+              ),
+            ],
           ),
           alignment: Alignment.center,
           child: keyContent,
