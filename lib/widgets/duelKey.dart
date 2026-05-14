@@ -188,13 +188,16 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
           height: widget.height ?? 48,
           margin: EdgeInsets.all(widget.theme.keySpacing / 2),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: _isPressed
-                  ? [const Color(0xFF2D0A4A), const Color(0xFF1A0530)]
-                  : [const Color(0xFF4A1A6B), const Color(0xFF2D0A4A)],
-            ),
+            gradient: _isPressed
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      widget.theme.activeKeyColor,
+                      widget.theme.activeKeyColor,
+                    ],
+                  )
+                : widget.theme.primaryGradient,
             borderRadius: BorderRadius.circular(widget.theme.borderRadius),
             border: Border.all(
               color: widget.isFlashHighlight
@@ -230,7 +233,8 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
                         widget.topChar,
                         maxLines: 1,
                         style: TextStyle(
-                          color: const Color(0xFF00E5D4).withOpacity(topOpacity),
+                          color: widget.theme.specialKeyTextColor
+                              .withOpacity(topOpacity),
                           fontSize: topFontSize,
                           fontWeight: topWeight,
                           height: 1,
@@ -246,7 +250,7 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
                         widget.bottomChar,
                         maxLines: 1,
                         style: TextStyle(
-                          color: const Color(0xFFE0D0FF)
+                          color: widget.theme.keyTextColor
                               .withOpacity(bottomOpacity),
                           fontSize: bottomFontSize,
                           fontWeight: bottomWeight,

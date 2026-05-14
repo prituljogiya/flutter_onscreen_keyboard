@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../core/numericKeyController.dart';
+import '../core/theme_controller.dart';
 import 'numerickeyboardkey.dart';
 
 class NumericKeyboard extends StatefulWidget {
@@ -25,6 +26,9 @@ class NumericKeyboard extends StatefulWidget {
   /// content in a parent [TapRegion] (see package example). Optional.
   final VoidCallback? onTapOutside;
 
+  /// When set, used instead of [ThemeController.keyboardTheme] (no GetX listen).
+  final KeyboardTheme? keyboardTheme;
+
   const NumericKeyboard({
     super.key,
     required this.controller,
@@ -38,6 +42,7 @@ class NumericKeyboard extends StatefulWidget {
     this.minValue,
     this.maxValue,
     this.onTapOutside,
+    this.keyboardTheme,
   });
 
   @override
@@ -136,6 +141,22 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.keyboardTheme != null) {
+      return _buildWithTheme(context, widget.keyboardTheme!);
+    }
+    if (!Get.isRegistered<ThemeController>()) {
+      return _buildWithTheme(context, KeyboardTheme.purpleCyan());
+    }
+    return Obx(() {
+      Get.find<ThemeController>().keyboardThemeRx.value;
+      return _buildWithTheme(
+        context,
+        Get.find<ThemeController>().keyboardTheme,
+      );
+    });
+  }
+
+  Widget _buildWithTheme(BuildContext context, KeyboardTheme theme) {
     final media = MediaQuery.of(context);
     final isLandscape = media.orientation == Orientation.landscape;
     final resolvedHeight =
@@ -144,193 +165,205 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     return Obx(() {
       return Container(
         height: resolvedHeight,
-        decoration: const BoxDecoration(color: Color(0xFF2D004D)),
+        decoration: BoxDecoration(color: theme.backgroundColor),
         child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 50,
-                      margin: const EdgeInsets.fromLTRB(12, 10, 0, 3),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      alignment: Alignment.centerLeft,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.2),
-                        border: const Border(
-                          bottom: BorderSide(
-                            color: Colors.white24,
-                            width: 1.2,
-                          ),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 50,
+                    margin: const EdgeInsets.fromLTRB(12, 10, 0, 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.2),
+                      border: const Border(
+                        bottom: BorderSide(
+                          color: Colors.white24,
+                          width: 1.2,
                         ),
-                      ),
-                      child: ValueListenableBuilder<TextEditingValue>(
-                        valueListenable: _inputController,
-                        builder: (context, value, _) {
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  value.text,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                      onPressed: () {
-                        _keyboardController.closeKeyboard();
-                        widget.onTapOutside?.call();
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                ),
-                child: Text(
-                  _keyboardController.validationError ?? "",
-                  style: const TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              if (widget.minValue != null || widget.maxValue != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (widget.minValue != null) ...[
-                        _boundField(
-                          'Min Value',
-                          '${widget.minValue}',
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      if (widget.maxValue != null)
-                        _boundField(
-                          'Max Value',
-                          '${widget.maxValue}',
-                        ),
-                    ],
-                  ),
-                ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Column(
+                    child: ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _inputController,
+                      builder: (context, value, _) {
+                        return Row(
                           children: [
                             Expanded(
-                              child: _buildDigitRow(const ['7', '8', '9']),
-                            ),
-                            const SizedBox(height: 6),
-                            Expanded(
-                              child: _buildDigitRow(const ['4', '5', '6']),
-                            ),
-                            const SizedBox(height: 6),
-                            Expanded(
-                              child: _buildDigitRow(const ['1', '2', '3']),
-                            ),
-                            const SizedBox(height: 6),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      child: _buildDigitKey('0'),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      child: _decimalKey(),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      child: _backSpaceKey(),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                        ),
-                                        child: _ctrlKey(),
-                                      )),
-                                  Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                        ),
-                                        child: _enterKey(),
-                                      )),
-                                ],
+                              child: Text(
+                                value.text,
+                                style: TextStyle(
+                                  color: theme.keyTextColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                      // Right side: Min/Max values (only when bounds are set)
-                    ],
+                        );
+                      },
+                    ),
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      size: 18,
+                      color: theme.keyTextColor,
+                    ),
+                    onPressed: () {
+                      _keyboardController.closeKeyboard();
+                      widget.onTapOutside?.call();
+                    },
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
               ),
-            ],
-          ),
-        );
+              child: Text(
+                _keyboardController.validationError ?? "",
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            if (widget.minValue != null || widget.maxValue != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widget.minValue != null) ...[
+                      _boundField(
+                        theme,
+                        'Min Value',
+                        '${widget.minValue}',
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    if (widget.maxValue != null)
+                      _boundField(
+                        theme,
+                        'Max Value',
+                        '${widget.maxValue}',
+                      ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: _buildDigitRow(
+                              theme,
+                              const ['7', '8', '9'],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: _buildDigitRow(
+                              theme,
+                              const ['4', '5', '6'],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: _buildDigitRow(
+                              theme,
+                              const ['1', '2', '3'],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: _buildDigitKey(theme, '0'),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: _decimalKey(theme),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: _backSpaceKey(theme),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: _ctrlKey(theme),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: _enterKey(theme),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     });
   }
 
-  Widget _boundField(String label, String value) {
+  Widget _boundField(KeyboardTheme theme, String label, String value) {
     return Row(
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF00E5D4),
+          style: TextStyle(
+            color: theme.specialKeyTextColor,
             fontSize: 14,
             fontWeight: FontWeight.normal,
           ),
@@ -338,8 +371,8 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         const SizedBox(width: 6),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: theme.keyTextColor,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -348,22 +381,28 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     );
   }
 
-  Widget _backSpaceKey() {
+  Widget _backSpaceKey(KeyboardTheme theme) {
     return NumericKey(
-        onTap: () => _keyboardController.backspace(),
-        isSpecial: true,
-        child: const Icon(Icons.backspace_outlined,
-            color: Colors.white, size: 20));
+      theme: theme,
+      onTap: () => _keyboardController.backspace(),
+      isSpecial: true,
+      child: Icon(
+        Icons.backspace_outlined,
+        color: theme.specialKeyTextColor,
+        size: 20,
+      ),
+    );
   }
 
-  Widget _decimalKey() {
+  Widget _decimalKey(KeyboardTheme theme) {
     return NumericKey(
+      theme: theme,
       onTap: () => _keyboardController.insertDecimal(),
       isSpecial: true,
-      child: const Text(
+      child: Text(
         '.',
         style: TextStyle(
-          color: Color(0xFFE0D0FF),
+          color: theme.keyTextColor,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
@@ -371,14 +410,15 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     );
   }
 
-  Widget _ctrlKey() {
+  Widget _ctrlKey(KeyboardTheme theme) {
     return NumericKey(
+      theme: theme,
       onTap: () => _keyboardController.clear(),
       isSpecial: true,
-      child: const Text(
+      child: Text(
         'Clear',
         style: TextStyle(
-          color: Color(0xFF00E5D4),
+          color: theme.specialKeyTextColor,
           fontSize: 16,
           fontWeight: FontWeight.normal,
         ),
@@ -386,8 +426,9 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     );
   }
 
-  Widget _enterKey() {
+  Widget _enterKey(KeyboardTheme theme) {
     return NumericKey(
+      theme: theme,
       onTap: () {
         final success = _keyboardController.enter();
         if (!success) return;
@@ -403,10 +444,10 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         widget.onEnterPressed?.call();
       },
       isSpecial: true,
-      child: const Text(
+      child: Text(
         'Enter',
         style: TextStyle(
-          color: Color(0xFF00E5D4),
+          color: theme.specialKeyTextColor,
           fontSize: 16,
           fontWeight: FontWeight.normal,
         ),
@@ -414,28 +455,29 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     );
   }
 
-  Widget _buildDigitRow(List<String> digits) {
+  Widget _buildDigitRow(KeyboardTheme theme, List<String> digits) {
     return Row(
       children: digits
           .map(
             (digit) => Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: _buildDigitKey(digit),
-          ),
-        ),
-      )
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildDigitKey(theme, digit),
+              ),
+            ),
+          )
           .toList(),
     );
   }
 
-  Widget _buildDigitKey(String digit) {
+  Widget _buildDigitKey(KeyboardTheme theme, String digit) {
     return NumericKey(
+      theme: theme,
       onTap: () => _keyboardController.insertDigit(digit),
       child: Text(
         digit,
-        style: const TextStyle(
-          color: Color(0xFFE0D0FF),
+        style: TextStyle(
+          color: theme.keyTextColor,
           fontSize: 20,
           fontWeight: FontWeight.w500,
         ),

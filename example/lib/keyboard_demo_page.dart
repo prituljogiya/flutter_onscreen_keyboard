@@ -144,6 +144,8 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
             'uppercase + digits on that row, Caps twice for uppercase + symbols. '
             'Typed text stays in a '
             'preview until you press Enter (then it commits to the field). '
+            'Fields use TextInputType.text for the QWERTY keyboard; number-style '
+            'types open the numeric pad. '
             'Name uses maxLength ($_nameMaxLength); the keyboard stops adding '
             'characters once the preview reaches that length.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -156,8 +158,8 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
             hint: 'Max $_nameMaxLength characters (field + keyboard)',
             controller: _nameController,
             focusNode: _nameFocus,
+            keyboardType: TextInputType.text,
             maxLength: _nameMaxLength,
-            onTap: () => _activateAlpha(_nameController, _nameFocus),
           ),
           const SizedBox(height: 12),
           _buildReadOnlyField(
@@ -165,7 +167,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
             hint: 'Same keyboard — preview, then Enter',
             controller: _emailController,
             focusNode: _emailFocus,
-            onTap: () => _activateAlpha(_emailController, _emailFocus),
+            keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 12),
           _buildReadOnlyField(
@@ -173,7 +175,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
             hint: 'Longer free text on the alpha keyboard',
             controller: _memoController,
             focusNode: _memoFocus,
-            onTap: () => _activateAlpha(_memoController, _memoFocus),
+            keyboardType: TextInputType.multiline,
           ),
           const SizedBox(height: 28),
           Text(
@@ -197,7 +199,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
             hint: 'Numeric keyboard — range on keys',
             controller: _ageController,
             focusNode: _ageFocus,
-            onTap: () => _activateNumeric(_ageController, _ageFocus),
+            keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 12),
           _buildReadOnlyField(
@@ -205,7 +207,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
             hint: 'Numeric keyboard — range on keys',
             controller: _quantityController,
             focusNode: _quantityFocus,
-            onTap: () => _activateNumeric(_quantityController, _quantityFocus),
+            keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 12),
           _buildReadOnlyField(
@@ -213,7 +215,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
             hint: '4 digits — no min/max on keyboard, custom rule on Enter',
             controller: _pinController,
             focusNode: _pinFocus,
-            onTap: () => _activateNumeric(_pinController, _pinFocus),
+            keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 12),
           _buildReadOnlyField(
@@ -222,7 +224,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
                 'Min / max $_amountMin–$_amountMax on keyboard; Enter must pass range',
             controller: _amountController,
             focusNode: _amountFocus,
-            onTap: () => _activateNumeric(_amountController, _amountFocus),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
         ],
       ),
@@ -288,20 +290,34 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
     );
   }
 
+  void _openFieldForKeyboardType(
+    TextEditingController controller,
+    FocusNode focusNode,
+    TextInputType keyboardType,
+  ) {
+    final numeric = preferOnscreenNumericKeyboard(keyboardType);
+    if (numeric) {
+      _activateNumeric(controller, focusNode);
+    } else {
+      _activateAlpha(controller, focusNode);
+    }
+  }
+
   Widget _buildReadOnlyField({
     required String label,
     required String hint,
     required TextEditingController controller,
     required FocusNode focusNode,
-    required VoidCallback onTap,
+    required TextInputType keyboardType,
     int? maxLength,
   }) {
     return TextField(
       controller: controller,
       focusNode: focusNode,
+      keyboardType: keyboardType,
       readOnly: true,
       showCursor: true,
-      onTap: onTap,
+      onTap: () => _openFieldForKeyboardType(controller, focusNode, keyboardType),
       maxLength: maxLength,
       decoration: InputDecoration(
         labelText: label,

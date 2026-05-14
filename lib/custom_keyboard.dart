@@ -4,6 +4,7 @@ export 'app/custom_keyboard_app.dart';
 export 'flutter_onscreen_keyboard_init.dart';
 export 'core/keyboard_controller.dart';
 export 'core/numericKeyController.dart';
+export 'core/onscreen_keyboard_mapping.dart';
 export 'core/theme_controller.dart';
 
 export 'widgets/custom_keyboard.dart';

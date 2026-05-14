@@ -1,9 +1,12 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+/// Owns [KeyboardTheme] and Material [ThemeData] for the host app and keyboards.
+/// Call [updateTheme], [customizeKeyboardTheme], or [toggleTheme]; wrap
+/// [GetMaterialApp] with [GetBuilder]<[ThemeController]> so scaffold colors stay
+/// in sync with [keyboardTheme.backgroundColor].
 class ThemeController extends GetxController {
   final RxBool _isDarkMode = true.obs;
 
@@ -31,8 +34,16 @@ class ThemeController extends GetxController {
         : KeyboardTheme.lightTheme();
   }
 
+  /// Sets the on-screen keyboard palette and rebuilds [GetBuilder]/listeners.
   void updateTheme(KeyboardTheme newTheme) {
     _keyboardTheme.value = newTheme;
+    update();
+  }
+
+  /// Adjusts the current [KeyboardTheme] with a callback (e.g. [KeyboardTheme.copyWith]).
+  void customizeKeyboardTheme(KeyboardTheme Function(KeyboardTheme current) fn) {
+    _keyboardTheme.value = fn(_keyboardTheme.value);
+    update();
   }
 
   void toggleTheme() {
@@ -67,9 +78,7 @@ class ThemeController extends GetxController {
       useMaterial3: true,
       colorScheme: colorScheme,
       brightness: brightness,
-      scaffoldBackgroundColor: brightness == Brightness.dark
-          ? const Color(0xFF2D004D)
-          : const Color(0xFFF3E5F5),
+      scaffoldBackgroundColor: _keyboardTheme.value.backgroundColor,
       appBarTheme: AppBarTheme(
         centerTitle: true,
         backgroundColor: brightness == Brightness.dark
@@ -82,6 +91,7 @@ class ThemeController extends GetxController {
   }
 }
 
+/// Visual tokens for [CustomKeyboard], [NumericKeyboard], and draggable panels.
 class KeyboardTheme {
   final Color backgroundColor;
   final Color keyBackgroundColor;
@@ -171,6 +181,40 @@ class KeyboardTheme {
           Color(0xFFF3E5F5),
         ],
       ),
+    );
+  }
+
+  KeyboardTheme copyWith({
+    Color? backgroundColor,
+    Color? keyBackgroundColor,
+    Color? keyTextColor,
+    Color? specialKeyColor,
+    Color? specialKeyTextColor,
+    Color? activeKeyColor,
+    Color? keyBorderColor,
+    double? keyBorderWidth,
+    double? borderRadius,
+    double? fontSize,
+    double? keySpacing,
+    double? keyElevation,
+    Color? shadowColor,
+    Gradient? primaryGradient,
+  }) {
+    return KeyboardTheme(
+      backgroundColor: backgroundColor ?? this.backgroundColor,
+      keyBackgroundColor: keyBackgroundColor ?? this.keyBackgroundColor,
+      keyTextColor: keyTextColor ?? this.keyTextColor,
+      specialKeyColor: specialKeyColor ?? this.specialKeyColor,
+      specialKeyTextColor: specialKeyTextColor ?? this.specialKeyTextColor,
+      activeKeyColor: activeKeyColor ?? this.activeKeyColor,
+      keyBorderColor: keyBorderColor ?? this.keyBorderColor,
+      keyBorderWidth: keyBorderWidth ?? this.keyBorderWidth,
+      borderRadius: borderRadius ?? this.borderRadius,
+      fontSize: fontSize ?? this.fontSize,
+      keySpacing: keySpacing ?? this.keySpacing,
+      keyElevation: keyElevation ?? this.keyElevation,
+      shadowColor: shadowColor ?? this.shadowColor,
+      primaryGradient: primaryGradient ?? this.primaryGradient,
     );
   }
 }

@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 
-import 'package:flutter/material.dart';
+import '../core/theme_controller.dart';
 
 class NumericKey extends StatefulWidget {
   final VoidCallback onTap;
   final Widget child;
   final bool isSpecial;
+  final KeyboardTheme theme;
 
   const NumericKey({
     super.key,
     required this.onTap,
     required this.child,
+    required this.theme,
     this.isSpecial = false,
   });
 
@@ -59,10 +60,63 @@ class _NumericKeyState extends State<NumericKey>
     _controller.reverse();
   }
 
-
-
   @override
   Widget build(BuildContext context) {
+    final t = widget.theme;
+    final decoration = widget.isSpecial
+        ? BoxDecoration(
+            color: _isPressed ? t.activeKeyColor : t.specialKeyColor,
+            borderRadius: BorderRadius.circular(t.borderRadius),
+            border: Border.all(
+              color: t.keyBorderColor,
+              width: t.keyBorderWidth,
+            ),
+            boxShadow: _isPressed
+                ? [
+                    BoxShadow(
+                      color: t.shadowColor.withOpacity(0.3),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: t.shadowColor.withOpacity(0.4),
+                      blurRadius: t.keyElevation * 2,
+                      offset: Offset(0, t.keyElevation),
+                    ),
+                  ],
+          )
+        : BoxDecoration(
+            gradient: _isPressed
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [t.activeKeyColor, t.activeKeyColor],
+                  )
+                : t.primaryGradient,
+            borderRadius: BorderRadius.circular(t.borderRadius),
+            border: Border.all(
+              color: t.keyBorderColor,
+              width: t.keyBorderWidth,
+            ),
+            boxShadow: _isPressed
+                ? [
+                    BoxShadow(
+                      color: t.shadowColor.withOpacity(0.3),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: t.shadowColor.withOpacity(0.4),
+                      blurRadius: t.keyElevation * 2,
+                      offset: Offset(0, t.keyElevation),
+                    ),
+                  ],
+          );
+
     return AnimatedBuilder(
       animation: _scaleAnimation,
       builder: (context, child) => Transform.scale(
@@ -76,36 +130,7 @@ class _NumericKeyState extends State<NumericKey>
         child: Container(
           height: 44,
           width: 45,
-          decoration: BoxDecoration(
-
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: _isPressed
-                  ? [const Color(0xFF1B8A53), const Color(0xFF1B8A53)]
-                  : [const Color(0xFF4A1A6B), const Color(0xFF2D0A4A)],
-            ),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(
-              color: const Color(0xFF5A3A7A).withOpacity(0.5),
-              width: 1,
-            ),
-            boxShadow: _isPressed
-                ? [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 2,
-                offset: const Offset(0, 1),
-              ),
-            ]
-                : [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 6,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+          decoration: decoration,
           alignment: Alignment.center,
           child: widget.child,
         ),

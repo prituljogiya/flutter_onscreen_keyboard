@@ -30,6 +30,10 @@ class DraggableDynamicKeyboard extends StatefulWidget {
   /// Passed to the active keyboard; runs after unfocus on outside tap.
   final VoidCallback? onTapOutside;
 
+  /// When set, used instead of [ThemeController.keyboardTheme] for panel chrome
+  /// and passed through to the child keyboard.
+  final KeyboardTheme? keyboardTheme;
+
   const DraggableDynamicKeyboard({
     super.key,
     required this.controller,
@@ -53,6 +57,7 @@ class DraggableDynamicKeyboard extends StatefulWidget {
     this.numericMaxValue,
     this.maxLength,
     this.onTapOutside,
+    this.keyboardTheme,
   });
 
   @override
@@ -303,45 +308,53 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
 
   @override
   Widget build(BuildContext context) {
-    final themeController = Get.find<ThemeController>();
-    final theme = themeController.keyboardTheme;
+    Widget buildWithTheme(KeyboardTheme theme) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          _layoutArea = Size(constraints.maxWidth, constraints.maxHeight);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        _layoutArea = Size(constraints.maxWidth, constraints.maxHeight);
+          _cachePanBounds();
 
-        _cachePanBounds();
+          final keyboardWidth = widget.useNumericKeyboard ? 207.0 : 761.0;
 
-        final keyboardWidth = widget.useNumericKeyboard ? 207.0 : 761.0;
+          final keyboardHeight = widget.useNumericKeyboard ? 366.0 : 327.0;
 
-        final keyboardHeight = widget.useNumericKeyboard ? 366.0 : 327.0;
+          _keyboardPanel = RepaintBoundary(
+            child: _buildKeyboardPanel(theme, keyboardWidth, keyboardHeight),
+          );
 
-        /// BUILD ONCE
-        _keyboardPanel = RepaintBoundary(
-          child: _buildKeyboardPanel(theme, keyboardWidth, keyboardHeight),
-        );
+          return Stack(
+            children: [
+              widget.child,
+              if (_isVisible || widget.alwaysVisible)
+                ValueListenableBuilder<Offset>(
+                  valueListenable: _positionNotifier,
+                  builder: (context, position, _) {
+                    return Positioned(
+                      left: position.dx,
+                      top: position.dy,
+                      child: Listener(
+                        child: _keyboardPanel,
+                      ),
+                    );
+                  },
+                ),
+            ],
+          );
+        },
+      );
+    }
 
-        return Stack(
-          children: [
-            widget.child,
-            if (_isVisible || widget.alwaysVisible)
-              ValueListenableBuilder<Offset>(
-                valueListenable: _positionNotifier,
-                builder: (context, position, _) {
-                  return Positioned(
-                    left: position.dx,
-                    top: position.dy,
-                    child: Listener(
-                      // onPointerMove: _handlePointerMove,
-                      child: _keyboardPanel,
-                    ),
-                  );
-                },
-              ),
-          ],
-        );
-      },
-    );
+    if (widget.keyboardTheme != null) {
+      return buildWithTheme(widget.keyboardTheme!);
+    }
+    if (!Get.isRegistered<ThemeController>()) {
+      return buildWithTheme(KeyboardTheme.purpleCyan());
+    }
+    return Obx(() {
+      Get.find<ThemeController>().keyboardThemeRx.value;
+      return buildWithTheme(Get.find<ThemeController>().keyboardTheme);
+    });
   }
 
   Widget _buildKeyboardPanel(KeyboardTheme theme,
@@ -377,6 +390,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                 minValue: widget.numericMinValue,
                 maxValue: widget.numericMaxValue,
                 onTapOutside: widget.onTapOutside,
+                keyboardTheme: theme,
               )
                   : CustomKeyboard(
                 controller: widget.controller,
@@ -388,6 +402,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                 height: keyboardHeight,
                 maxLength: widget.maxLength,
                 onTapOutside: widget.onTapOutside,
+                keyboardTheme: theme,
               ),
             ),
             GestureDetector(

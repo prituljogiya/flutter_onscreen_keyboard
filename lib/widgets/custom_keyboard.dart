@@ -27,6 +27,9 @@ class CustomKeyboard extends StatefulWidget {
   /// [KeyboardController.closeKeyboard]. Optional.
   final VoidCallback? onTapOutside;
 
+  /// When set, used instead of [ThemeController.keyboardTheme] (no GetX listen).
+  final KeyboardTheme? keyboardTheme;
+
   const CustomKeyboard({
     super.key,
     required this.controller,
@@ -38,6 +41,7 @@ class CustomKeyboard extends StatefulWidget {
     this.height,
     this.maxLength,
     this.onTapOutside,
+    this.keyboardTheme,
   });
 
   @override
@@ -175,13 +179,28 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = KeyboardTheme.purpleCyan();
+    if (widget.keyboardTheme != null) {
+      return _buildKeyboardShell(context, widget.keyboardTheme!);
+    }
+    if (!Get.isRegistered<ThemeController>()) {
+      return _buildKeyboardShell(context, KeyboardTheme.purpleCyan());
+    }
+    return Obx(() {
+      Get.find<ThemeController>().keyboardThemeRx.value;
+      return _buildKeyboardShell(
+        context,
+        Get.find<ThemeController>().keyboardTheme,
+      );
+    });
+  }
+
+  Widget _buildKeyboardShell(BuildContext context, KeyboardTheme theme) {
     final media = MediaQuery.of(context);
     final screenSize = media.size;
     final isLandscape = media.orientation == Orientation.landscape;
     final keyboardHeight =
         widget.height ?? screenSize.height * (isLandscape ? 0.58 : 0.45);
-    const caretColor = Color(0xFF00E5D4);
+    final caretColor = theme.specialKeyTextColor;
 
     return Container(
       height: keyboardHeight,

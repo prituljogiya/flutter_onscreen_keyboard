@@ -6,8 +6,15 @@ import 'core/theme_controller.dart';
 /// Call once before [runApp] **or** rely on [OnscreenKeyboardBinding] below.
 ///
 /// Registers [ThemeController] so `CustomKeyboard`, `NumericKeyboard`,
-/// and `DraggableDynamicKeyboard` work anywhere under your root
-/// [GetMaterialApp].
+/// and `DraggableDynamicKeyboard` can resolve [KeyboardTheme] (and optional
+/// per-widget `keyboardTheme` overrides). Use [ThemeController.updateTheme],
+/// [ThemeController.customizeKeyboardTheme], or [KeyboardTheme.copyWith] to
+/// change colors; [GetBuilder]<[ThemeController]> can rebuild [GetMaterialApp]
+/// because scaffold colors follow [KeyboardTheme.backgroundColor].
+///
+/// Use [preferOnscreenNumericKeyboard] with each field's [TextInputType] to
+/// choose [NumericKeyboard] vs [CustomKeyboard] (see example
+/// `keyboard_demo_page.dart`).
 ///
 /// ```dart
 /// void main() {
