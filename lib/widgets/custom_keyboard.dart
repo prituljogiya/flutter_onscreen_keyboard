@@ -22,8 +22,9 @@ class CustomKeyboard extends StatefulWidget {
   final int? maxLength;
 
   /// Called when the user dismisses the keyboard without committing: after
-  /// [focusNode.unfocus] on outside tap, or immediately after the preview **close**
-  /// (X) control runs [KeyboardController.closeKeyboard]. Optional.
+  /// [focusNode.unfocus] on outside tap (when the host wraps the keyboard in a
+  /// parent [TapRegion]), or immediately after the preview **close** (X) runs
+  /// [KeyboardController.closeKeyboard]. Optional.
   final VoidCallback? onTapOutside;
 
   const CustomKeyboard({

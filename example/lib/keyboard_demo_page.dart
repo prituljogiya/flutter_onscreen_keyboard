@@ -252,30 +252,36 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
                       onEnterPressed: _dismissKeyboardOverlay,
                       child: formContent,
                     )
-                  : Column(
-                      children: [
-                        Expanded(child: formContent),
-                        if (_useNumericKeyboard)
-                          NumericKeyboard(
-                            controller: _activeController!,
-                            focusNode: _activeFocusNode!,
-                            commitOnEnterOnly: true,
-                            minValue: numericKeyboardMin,
-                            maxValue: numericKeyboardMax,
-                            validator: numericValidator(),
-                            onTapOutside: _dismissKeyboardOverlay,
-                            onEnterPressed: _dismissKeyboardOverlay,
-                          )
-                        else
-                          CustomKeyboard(
-                            controller: _activeController!,
-                            focusNode: _activeFocusNode!,
-                            commitOnEnterOnly: true,
-                            maxLength: alphaMaxLength(),
-                            onTapOutside: _dismissKeyboardOverlay,
-                            onEnterPressed: _dismissKeyboardOverlay,
-                          ),
-                      ],
+                  : TapRegion(
+                      onTapOutside: (_) {
+                        _activeFocusNode?.unfocus();
+                        _dismissKeyboardOverlay();
+                      },
+                      child: Column(
+                        children: [
+                          Expanded(child: formContent),
+                          if (_useNumericKeyboard)
+                            NumericKeyboard(
+                              controller: _activeController!,
+                              focusNode: _activeFocusNode!,
+                              commitOnEnterOnly: true,
+                              minValue: numericKeyboardMin,
+                              maxValue: numericKeyboardMax,
+                              validator: numericValidator(),
+                              onTapOutside: _dismissKeyboardOverlay,
+                              onEnterPressed: _dismissKeyboardOverlay,
+                            )
+                          else
+                            CustomKeyboard(
+                              controller: _activeController!,
+                              focusNode: _activeFocusNode!,
+                              commitOnEnterOnly: true,
+                              maxLength: alphaMaxLength(),
+                              onTapOutside: _dismissKeyboardOverlay,
+                              onEnterPressed: _dismissKeyboardOverlay,
+                            ),
+                        ],
+                      ),
                     ))
             : formContent,
       ),

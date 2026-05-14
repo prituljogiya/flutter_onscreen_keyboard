@@ -19,9 +19,10 @@ class NumericKeyboard extends StatefulWidget {
   final int? minValue;
   final int? maxValue;
 
-  /// Called when the user dismisses the keyboard without committing: after
-  /// [focusNode.unfocus] on outside tap, or immediately after the **close** (X)
-  /// runs [NumericKeyboardController.closeKeyboard]. Optional.
+  /// Called when the user dismisses the keyboard without committing: after the
+  /// **close** (X) runs [NumericKeyboardController.closeKeyboard]. To dismiss
+  /// when the user taps outside the keyboard, wrap the keyboard and your
+  /// content in a parent [TapRegion] (see package example). Optional.
   final VoidCallback? onTapOutside;
 
   const NumericKeyboard({
@@ -140,16 +141,11 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     final resolvedHeight =
         widget.height ?? media.size.height * (isLandscape ? 0.42 : 0.38);
 
-    return TapRegion(
-      onTapOutside: (_) {
-        widget.focusNode.unfocus();
-        widget.onTapOutside?.call();
-      },
-      child: Obx(() {
-        return Container(
-          height: resolvedHeight,
-          decoration: const BoxDecoration(color: Color(0xFF2D004D)),
-          child: Column(
+    return Obx(() {
+      return Container(
+        height: resolvedHeight,
+        decoration: const BoxDecoration(color: Color(0xFF2D004D)),
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -325,8 +321,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
             ],
           ),
         );
-      }),
-    );
+    });
   }
 
   Widget _boundField(String label, String value) {
