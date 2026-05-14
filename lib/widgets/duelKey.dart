@@ -4,8 +4,6 @@ import '../core/theme_controller.dart';
 
 import 'package:flutter/material.dart';
 
-import '../core/theme_controller.dart';
-
 class DualKey extends StatefulWidget {
   final String topChar;
   final String bottomChar;

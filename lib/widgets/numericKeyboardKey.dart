@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 
+import 'package:flutter/material.dart';
+
 class NumericKey extends StatefulWidget {
   final VoidCallback onTap;
   final Widget child;
@@ -57,6 +59,8 @@ class _NumericKeyState extends State<NumericKey>
     _controller.reverse();
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -70,14 +74,15 @@ class _NumericKeyState extends State<NumericKey>
         onTapUp: _handleTapUp,
         onTapCancel: _handleTapCancel,
         child: Container(
-          height: 48,
-          width: 48,
+          height: 44,
+          width: 45,
           decoration: BoxDecoration(
+
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: _isPressed
-                  ? [const Color(0xFF2D0A4A), const Color(0xFF1A0530)]
+                  ? [const Color(0xFF1B8A53), const Color(0xFF1B8A53)]
                   : [const Color(0xFF4A1A6B), const Color(0xFF2D0A4A)],
             ),
             borderRadius: BorderRadius.circular(4),

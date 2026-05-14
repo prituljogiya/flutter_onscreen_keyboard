@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get_rx/src/rx_types/rx_types.dart';
 import 'package:get/get_state_manager/src/simple/get_controllers.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get_rx/src/rx_types/rx_types.dart';
+import 'package:get/get_state_manager/src/simple/get_controllers.dart';
 
 class NumericKeyboardController extends GetxController {
   final TextEditingController textController;
@@ -66,6 +69,18 @@ class NumericKeyboardController extends GetxController {
     if (_validationError.value != null) {
       return false;
     }
+    focusNode.unfocus();
+    return true;
+  }
+
+  bool closeKeyboard() {
+    // _validate();
+    // if (_validationError.value != null) {
+    //   return false;
+    // }
+    // clear();
+    textController.clear();
+
     focusNode.unfocus();
     return true;
   }

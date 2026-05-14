@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/theme_controller.dart';
+import 'package:flutter/material.dart';
+import '../core/theme_controller.dart';
 
 class KeyboardKey extends StatefulWidget {
   final String label;
@@ -105,10 +107,12 @@ class _KeyboardKeyState extends State<KeyboardKey>
             child: Material(
               color: Colors.transparent,
               child: Container(
+                height: 44,
+                width: 45,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: widget.theme.keyBackgroundColor,
-                  borderRadius: BorderRadius.circular(0),
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
                       color: widget.theme.shadowColor,
@@ -126,6 +130,8 @@ class _KeyboardKeyState extends State<KeyboardKey>
                         _removeOverlay();
                       },
                       child: Container(
+                        width: 45,
+                        height: 45,
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         padding: const EdgeInsets.all(0),
                         decoration: BoxDecoration(
@@ -183,7 +189,18 @@ class _KeyboardKeyState extends State<KeyboardKey>
     if (widget.label == 'BACKSPACE') {
       keyContent = Icon(Icons.backspace_outlined, color: textColor, size: 20);
     } else if (widget.label == 'ENTER') {
-      keyContent = Icon(Icons.keyboard_return, color: textColor, size: 20);
+      keyContent =  Text(
+        "Enter",
+        style: TextStyle(
+          color: textColor,
+          fontSize: widget.theme.fontSize,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    } else if (widget.label == 'LEFT ARROW') {
+      keyContent = Icon(Icons.arrow_back, color: textColor, size: 20);
+    } else if (widget.label == 'RIGHT ARROW') {
+      keyContent = Icon(Icons.arrow_forward, color: textColor, size: 20);
     } else if (widget.label == 'SHIFT') {
       keyContent = Text(
         "Shift",
@@ -252,7 +269,6 @@ class _KeyboardKeyState extends State<KeyboardKey>
         onLongPressEnd: (_) => widget.onLongPressEnd?.call(),
         child: Container(
           width: widget.width,
-
           height: widget.height ?? widget.width ?? 48,
           margin: EdgeInsets.all(widget.theme.keySpacing / 2),
           decoration: BoxDecoration(

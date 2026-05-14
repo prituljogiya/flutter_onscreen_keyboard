@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import '../core/theme_controller.dart';
 import 'custom_keyboard.dart';
 import 'numeric.dart';
-
 class DraggableDynamicKeyboard extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -72,7 +71,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
   double _panMaxX = 0;
   double _panMinY = 0;
   double _panMaxY = 0;
-
+  bool _hasPositionedInitially = false;
   Size _layoutArea = Size.zero;
 
   late Widget _keyboardPanel;
@@ -118,14 +117,91 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
     }
   }
 
-  void _ensureKeyboardVisible() {
-    final keyboardWidth = widget.useNumericKeyboard
-        ? 360.0
-        : _keyboardWidthForScreen(_layoutArea);
+  //
+  //
+  // //
+  // void _ensureKeyboardVisible() {
+  //   final keyboardWidth = widget.useNumericKeyboard
+  //       ? 360.0
+  //       : _keyboardWidthForScreen(_layoutArea);
+  //
+  //   final keyboardHeight = widget.useNumericKeyboard
+  //       ? 400.0
+  //       : _keyboardHeightForScreen(_layoutArea);
+  //
+  //   const padding = 12.0;
+  //
+  //   final maxX = (_layoutArea.width - keyboardWidth - padding).clamp(
+  //     padding,
+  //     double.infinity,
+  //   );
+  //
+  //   final maxY = (_layoutArea.height - keyboardHeight - padding).clamp(
+  //     padding,
+  //     double.infinity,
+  //   );
+  //
+  //
+  //   /// FIRST TIME → OPEN IN CENTER
+  //   if (!_hasPositionedInitially) {
+  //     _hasPositionedInitially = true;
+  //
+  //     _position = Offset(
+  //       (_layoutArea.width - keyboardWidth) / 2,
+  //       (_layoutArea.height - keyboardHeight) / 2,
+  //     );
+  //
+  //     _positionNotifier.value = _position;
+  //     return;
+  //   }
+  //
+  //   /// If keyboard is outside screen,
+  //   /// reposition it automatically.
+  //   final shouldResetPosition =
+  //       _position.dy > maxY || _position.dx > maxX;
+  //
+  //   if (shouldResetPosition) {
+  //     _position = Offset(padding, maxY.toDouble());
+  //
+  //     _positionNotifier.value = _position;
+  //     return;
+  //   }
+  //
+  //   final corrected = Offset(
+  //     _position.dx.clamp(padding, maxX).toDouble(),
+  //     _position.dy.clamp(padding, maxY).toDouble(),
+  //   );
+  //
+  //   if (corrected != _position) {
+  //     _position = corrected;
+  //     _positionNotifier.value = corrected;
+  //   }
+  // //   /// If keyboard is outside screen,
+  // //   /// reposition it automatically.
+  // //   final shouldResetPosition = _position.dy > maxY || _position.dx > maxX;
+  // //
+  // //   if (shouldResetPosition) {
+  // //     _position = Offset(padding, maxY.toDouble());
+  // //
+  // //     _positionNotifier.value = _position;
+  // //     return;
+  // //   }
+  // //
+  // //   final corrected = Offset(
+  // //     _position.dx.clamp(padding, maxX).toDouble(),
+  // //     _position.dy.clamp(padding, maxY).toDouble(),
+  // //   );
+  // //
+  // //   if (corrected != _position) {
+  // //     _position = corrected;
+  // //     _positionNotifier.value = corrected;
+  // //   }
+  // // }
 
-    final keyboardHeight = widget.useNumericKeyboard
-        ? 400.0
-        : _keyboardHeightForScreen(_layoutArea);
+  void _ensureKeyboardVisible() {
+    final keyboardWidth = widget.useNumericKeyboard ? 207.0 : 761.0;
+
+    final keyboardHeight = widget.useNumericKeyboard ? 400.0 : 327.0;
 
     const padding = 12.0;
 
@@ -138,6 +214,19 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
       padding,
       double.infinity,
     );
+
+    /// FIRST TIME → OPEN IN CENTER
+    if (!_hasPositionedInitially) {
+      _hasPositionedInitially = true;
+
+      _position = Offset(
+        (_layoutArea.width - keyboardWidth) / 2,
+        (_layoutArea.height - keyboardHeight) / 2,
+      );
+
+      _positionNotifier.value = _position;
+      return;
+    }
 
     /// If keyboard is outside screen,
     /// reposition it automatically.
@@ -164,13 +253,9 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
   void _cachePanBounds() {
     final area = _layoutArea;
 
-    final keyboardWidth = widget.useNumericKeyboard
-        ? 360.0
-        : _keyboardWidthForScreen(_layoutArea);
+    final keyboardWidth = widget.useNumericKeyboard ? 207.0 : 761.0;
 
-    final keyboardHeight = widget.useNumericKeyboard
-        ? 400.0
-        : _keyboardHeightForScreen(_layoutArea);
+    final keyboardHeight = widget.useNumericKeyboard ? 366.0 : 327.0;
 
     const minX = 8.0;
     const minY = 8.0;
@@ -184,13 +269,11 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
-    final nx = (_position.dx + event.delta.dx)
-        .clamp(_panMinX, _panMaxX)
-        .toDouble();
+    final nx =
+    (_position.dx + event.delta.dx).clamp(_panMinX, _panMaxX).toDouble();
 
-    final ny = (_position.dy + event.delta.dy)
-        .clamp(_panMinY, _panMaxY)
-        .toDouble();
+    final ny =
+    (_position.dy + event.delta.dy).clamp(_panMinY, _panMaxY).toDouble();
 
     if (nx == _position.dx && ny == _position.dy) return;
 
@@ -229,13 +312,9 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
 
         _cachePanBounds();
 
-        final keyboardWidth = widget.useNumericKeyboard
-            ? 360.0
-            : _keyboardWidthForScreen(_layoutArea);
+        final keyboardWidth = widget.useNumericKeyboard ? 207.0 : 761.0;
 
-        final keyboardHeight = widget.useNumericKeyboard
-            ? 400.0
-            : _keyboardHeightForScreen(_layoutArea);
+        final keyboardHeight = widget.useNumericKeyboard ? 366.0 : 327.0;
 
         /// BUILD ONCE
         _keyboardPanel = RepaintBoundary(
@@ -253,7 +332,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                     left: position.dx,
                     top: position.dy,
                     child: Listener(
-                      onPointerMove: _handlePointerMove,
+                      // onPointerMove: _handlePointerMove,
                       child: _keyboardPanel,
                     ),
                   );
@@ -265,16 +344,14 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
     );
   }
 
-  Widget _buildKeyboardPanel(
-    KeyboardTheme theme,
-    double keyboardWidth,
-    double keyboardHeight,
-  ) {
+  Widget _buildKeyboardPanel(KeyboardTheme theme,
+      double keyboardWidth,
+      double keyboardHeight,) {
     return Material(
       color: Colors.transparent,
 
       /// FIXED ELEVATION
-      elevation: 4,
+      elevation: 1,
 
       borderRadius: BorderRadius.circular(16),
 
@@ -287,51 +364,67 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
         ),
         child: Column(
           children: [
-            /// DRAG HANDLE
-            Container(
-              height: 32,
-              decoration: BoxDecoration(
-                color: theme.specialKeyColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-              ),
-              child: Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.keyTextColor.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ),
             Expanded(
               child: widget.useNumericKeyboard
                   ? NumericKeyboard(
-                      controller: widget.controller,
-                      focusNode: widget.focusNode,
-                      onEnterPressed: widget.onEnterPressed,
-                      onSubmitted: widget.onSubmitted,
-                      validator: widget.validator,
-                      commitOnEnterOnly: widget.commitOnEnterOnly,
-                      height: keyboardHeight,
-                      minValue: widget.numericMinValue,
-                      maxValue: widget.numericMaxValue,
-                      onTapOutside: widget.onTapOutside,
-                    )
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                onEnterPressed: widget.onEnterPressed,
+                onSubmitted: widget.onSubmitted,
+                validator: widget.validator,
+                commitOnEnterOnly: widget.commitOnEnterOnly,
+                height: keyboardHeight,
+                minValue: widget.numericMinValue,
+                maxValue: widget.numericMaxValue,
+                onTapOutside: widget.onTapOutside,
+              )
                   : CustomKeyboard(
-                      controller: widget.controller,
-                      focusNode: widget.focusNode,
-                      onEnterPressed: widget.onEnterPressed,
-                      onSubmitted: widget.onSubmitted,
-                      validator: widget.validator,
-                      commitOnEnterOnly: widget.commitOnEnterOnly,
-                      height: keyboardHeight,
-                      maxLength: widget.maxLength,
-                      onTapOutside: widget.onTapOutside,
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                onEnterPressed: widget.onEnterPressed,
+                onSubmitted: widget.onSubmitted,
+                validator: widget.validator,
+                commitOnEnterOnly: widget.commitOnEnterOnly,
+                height: keyboardHeight,
+                maxLength: widget.maxLength,
+              ),
+            ),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanStart: (_) {
+                _cachePanBounds();
+              },
+              onPanUpdate: (details) {
+                final nx = (_position.dx + details.delta.dx)
+                    .clamp(_panMinX, _panMaxX)
+                    .toDouble();
+
+                final ny = (_position.dy + details.delta.dy)
+                    .clamp(_panMinY, _panMaxY)
+                    .toDouble();
+
+                _position = Offset(nx, ny);
+                _positionNotifier.value = _position;
+              },
+              child: Container(
+                height: 30,
+                decoration: BoxDecoration(
+                  color: theme.specialKeyColor,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.keyTextColor.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
                     ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

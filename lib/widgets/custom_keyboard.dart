@@ -122,126 +122,140 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     final keyboardHeight =
         widget.height ?? screenSize.height * (isLandscape ? 0.58 : 0.45);
 
-    return TapRegion(
-      onTapOutside: (_) {
-        widget.focusNode.unfocus();
-        widget.onTapOutside?.call();
-      },
-      child: Obx(() {
-        final layout = _keyboardController.currentLayout;
+    return Obx(() {
+      final layout = _keyboardController.currentLayout;
 
-        return Container(
-          height: keyboardHeight,
-          decoration: BoxDecoration(
-            color: theme.backgroundColor,
-            boxShadow: [
-              BoxShadow(
-                color: theme.shadowColor.withOpacity(0.2),
-                blurRadius: 8,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final previewHeight = isLandscape ? 38.0 : 48.0;
-              final previewMargin = isLandscape ? 6.0 : 8.0;
-              final horizontalPadding = isLandscape ? 3.0 : 4.0;
-              final validationHeight =
-                  _keyboardController.validationError == null ? 0.0 : 22.0;
+      return Container(
+        height: keyboardHeight,
+        decoration: BoxDecoration(
+          color: theme.backgroundColor,
+          boxShadow: [
+            BoxShadow(
+              color: theme.shadowColor.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final previewHeight = isLandscape ? 38.0 : 48.0;
+            final previewMargin = isLandscape ? 6.0 : 8.0;
+            final horizontalPadding = isLandscape ? 3.0 : 4.0;
+            final validationHeight =
+            _keyboardController.validationError == null ? 0.0 : 22.0;
 
-              // Keys add vertical margin (keySpacing) outside [height] — must fit inside row.
-              final keyVertInset = theme.keySpacing;
-              const layoutSafety = 2.0;
+            final keyVertInset = theme.keySpacing;
+            const layoutSafety = 2.0;
 
-              final previewBlock =
-                  previewHeight + (previewMargin * 2) + layoutSafety;
-              final availableForRows =
-                  (constraints.maxHeight - previewBlock - validationHeight)
-                      .clamp(0.0, double.infinity);
+            final previewBlock =
+                previewHeight + (previewMargin * 2) + layoutSafety;
+            final availableForRows =
+            (constraints.maxHeight - previewBlock - validationHeight)
+                .clamp(0.0, double.infinity);
 
-              final rowCount = layout.length;
-              final maxPerRow = rowCount > 0
-                  ? availableForRows / rowCount
-                  : availableForRows;
+            final rowCount = layout.length;
+            final maxPerRow =
+            rowCount > 0 ? availableForRows / rowCount : availableForRows;
 
-              // Never clamp *up* past available space (that caused bottom overflow in landscape).
-              final maxRowCap = isLandscape ? 44.0 : 56.0;
-              final rowHeight = maxPerRow > maxRowCap ? maxRowCap : maxPerRow;
+            // Never clamp *up* past available space (that caused bottom overflow in landscape).
+            final maxRowCap = isLandscape ? 44.0 : 56.0;
+            final rowHeight = maxPerRow > maxRowCap ? maxRowCap : maxPerRow;
 
-              final keyBodyHeight = (rowHeight - keyVertInset).clamp(
-                0.0,
-                rowHeight,
-              );
+            final keyBodyHeight = (rowHeight - keyVertInset).clamp(
+              0.0,
+              rowHeight,
+            );
 
-              return Column(
-                children: [
-                  Container(
-                    height: previewHeight,
-                    margin: EdgeInsets.all(previewMargin),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isLandscape ? 10 : 12,
-                    ),
-                    alignment: Alignment.centerLeft,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(0),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: ValueListenableBuilder(
-                      valueListenable: _inputController,
-                      builder: (context, TextEditingValue value, child) {
-                        return Text(
-                          value.text,
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: previewHeight,
+                        margin: EdgeInsets.all(previewMargin),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isLandscape ? 10 : 12,
+                        ),
+                        alignment: Alignment.centerLeft,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.15),
+                          border: const Border(
+                            bottom: BorderSide(
+                              color: Colors.white24,
+                              width: 1.2,
+                            ),
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _inputController,
+                          cursorColor: Colors.white,
+                          readOnly: true,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: isLandscape ? 16 : 18,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        );
-                      },
-                    ),
-                  ),
-                  if (_keyboardController.validationError != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          _keyboardController.validationError!,
-                          style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 12,
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            isCollapsed: true,
                           ),
+                          maxLines: 1,
                         ),
                       ),
                     ),
-                  Expanded(
-                    child: _buildAlphanumericKeyboard(
-                      layout,
-                      theme,
-                      rowHeight: rowHeight,
-                      keyBodyHeight: keyBodyHeight,
-                      horizontalPadding: horizontalPadding,
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.close,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                        onPressed: () {
+                          _keyboardController.closeKeyboard();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _keyboardController.validationError ?? " ",
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
-                ],
-              );
-            },
-          ),
-        );
-      }),
-    );
+                ),
+                Expanded(
+                  child: _buildAlphanumericKeyboard(
+                    layout,
+                    theme,
+                    rowHeight: rowHeight,
+                    keyBodyHeight: keyBodyHeight,
+                    horizontalPadding: horizontalPadding,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    });
   }
 
   Widget _buildAlphanumericKeyboard(
-    List<List<String>> layout,
-    KeyboardTheme theme, {
-    required double rowHeight,
-    required double keyBodyHeight,
-    required double horizontalPadding,
-  }) {
+      List<List<String>> layout,
+      KeyboardTheme theme, {
+        required double rowHeight,
+        required double keyBodyHeight,
+        required double horizontalPadding,
+      }) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: layout.map((row) {
@@ -250,7 +264,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: row.map((key) {
                 return _buildKey(
                   key,
@@ -268,12 +282,12 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   }
 
   Widget _buildKey(
-    String key,
-    KeyboardTheme theme,
-    int rowKeyCount, {
-    required double rowHeight,
-    required double keyBodyHeight,
-  }) {
+      String key,
+      KeyboardTheme theme,
+      int rowKeyCount, {
+        required double rowHeight,
+        required double keyBodyHeight,
+      }) {
     bool isSpecial = false;
     bool isActive = false;
     bool isWide = false;
@@ -320,7 +334,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         break;
       case 'ENTER':
         isSpecial = true;
-        isWide = true;
+        isWide = false;
+        width = 240;
         onTap = () {
           final success = _keyboardController.enter();
           if (!success) {
@@ -340,7 +355,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         break;
       case 'SPACE':
         isWide = true;
-        width = 300;
+        width = 512;
         key = 'space';
         onTap = () {
           _keyboardController.insertSpace();
@@ -361,9 +376,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
       default:
         onTap = () {
           if (isDual) {
-            final valueToInsert =
-                (_keyboardController.isShiftActive ||
-                    _keyboardController.isCapsLock)
+            final valueToInsert = (_keyboardController.isShiftActive ||
+                _keyboardController.isCapsLock)
                 ? topChar
                 : bottomChar;
             _keyboardController.insertText(valueToInsert);
@@ -374,7 +388,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         break;
     }
 
-    if (width == null && isWide) width = 120;
+    if (width == null && isWide) width = 300;
 
     Widget keyWidget;
     if (isDual) {

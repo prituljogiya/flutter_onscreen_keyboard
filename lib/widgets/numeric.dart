@@ -150,62 +150,106 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Display area - full width
-              Container(
-                height: isLandscape ? 60 : 72,
-                margin: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                alignment: Alignment.centerLeft,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(0),
-                  border: Border.all(color: Colors.white24),
-                ),
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _inputController,
-                  builder: (context, value, _) {
-                    return Text(
-                      value.text,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isLandscape ? 28 : 32,
-                        fontWeight: FontWeight.w500,
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 50,
+                      margin: const EdgeInsets.fromLTRB(12, 10, 0, 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      alignment: Alignment.centerLeft,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.2),
+                        border: const Border(
+                          bottom: BorderSide(
+                            color: Colors.white24,
+                            width: 1.2,
+                          ),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    );
-                  },
-                ),
-              ),
-              // Validation error
-              if (_keyboardController.validationError != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 2,
-                  ),
-                  child: Text(
-                    _keyboardController.validationError!,
-                    style: const TextStyle(
-                      color: Colors.redAccent,
-                      fontSize: 12,
+                      child: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _inputController,
+                        builder: (context, value, _) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  value.text,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        _keyboardController.closeKeyboard();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
                 ),
-              // Main content: keypad + min/max side panel
+                child: Text(
+                  _keyboardController.validationError ?? "",
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              if (widget.minValue != null || widget.maxValue != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (widget.minValue != null) ...[
+                        _boundField(
+                          'Min Value',
+                          '${widget.minValue}',
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      if (widget.maxValue != null)
+                        _boundField(
+                          'Max Value',
+                          '${widget.maxValue}',
+                        ),
+                    ],
+                  ),
+                ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Left side: Keypad
                       Expanded(
                         flex: 3,
                         child: Column(
                           children: [
                             Expanded(
-                              child: _buildDigitRow(const ['1', '2', '3']),
+                              child: _buildDigitRow(const ['7', '8', '9']),
                             ),
                             const SizedBox(height: 6),
                             Expanded(
@@ -213,20 +257,12 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                             ),
                             const SizedBox(height: 6),
                             Expanded(
-                              child: _buildDigitRow(const ['7', '8', '9']),
+                              child: _buildDigitRow(const ['1', '2', '3']),
                             ),
                             const SizedBox(height: 6),
                             Expanded(
                               child: Row(
                                 children: [
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      child: _clearKey(),
-                                    ),
-                                  ),
                                   Expanded(
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
@@ -243,6 +279,14 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                                       child: _decimalKey(),
                                     ),
                                   ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      child: _backSpaceKey(),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -250,9 +294,20 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                             Expanded(
                               child: Row(
                                 children: [
-                                  Expanded(child: _enterKey()),
-                                  const SizedBox(width: 8),
-                                  Expanded(child: _cancelKey()),
+                                  Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                        ),
+                                        child: _ctrlKey(),
+                                      )),
+                                  Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                        ),
+                                        child: _enterKey(),
+                                      )),
                                 ],
                               ),
                             ),
@@ -260,30 +315,6 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                         ),
                       ),
                       // Right side: Min/Max values (only when bounds are set)
-                      if (widget.minValue != null || widget.maxValue != null)
-                        Expanded(
-                          flex: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (widget.minValue != null) ...[
-                                  _boundField(
-                                    'Min Value',
-                                    '${widget.minValue}',
-                                  ),
-                                  const SizedBox(height: 4),
-                                ],
-                                if (widget.maxValue != null)
-                                  _boundField(
-                                    'Max Value',
-                                    '${widget.maxValue}',
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -296,57 +327,35 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   }
 
   Widget _boundField(String label, String value) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF00E5D4),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+    return Row(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF00E5D4),
+            fontSize: 14,
+            fontWeight: FontWeight.normal,
           ),
-          const SizedBox(height: 4),
-          Container(
-            height: 48,
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.22),
-              borderRadius: BorderRadius.circular(0),
-              border: Border.all(color: Colors.white24),
-            ),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _clearKey() {
+  Widget _backSpaceKey() {
     return NumericKey(
-      onTap: () => _keyboardController.clear(),
-      isSpecial: true,
-      child: const Text(
-        'C',
-        style: TextStyle(
-          color: Color(0xFFE0D0FF),
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
+        onTap: () => _keyboardController.backspace(),
+        isSpecial: true,
+        child: const Icon(Icons.backspace_outlined,
+            color: Colors.white, size: 20));
   }
 
   Widget _decimalKey() {
@@ -359,6 +368,21 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
           color: Color(0xFFE0D0FF),
           fontSize: 20,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _ctrlKey() {
+    return NumericKey(
+      onTap: () => _keyboardController.clear(),
+      isSpecial: true,
+      child: const Text(
+        'Clear',
+        style: TextStyle(
+          color: Color(0xFF00E5D4),
+          fontSize: 16,
+          fontWeight: FontWeight.normal,
         ),
       ),
     );
@@ -381,31 +405,12 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         widget.onEnterPressed?.call();
       },
       isSpecial: true,
-      child: const Icon(
-        Icons.keyboard_return,
-        color: Color(0xFF00E5D4),
-        size: 24,
-      ),
-    );
-  }
-
-  Widget _cancelKey() {
-    return NumericKey(
-      onTap: () {
-        if (widget.commitOnEnterOnly) {
-          _reseedStagingFromCommitted();
-        } else {
-          _keyboardController.cancel();
-        }
-        widget.onValueChanged?.call(_inputController.text);
-      },
-      isSpecial: true,
       child: const Text(
-        'Cancel',
+        'Enter',
         style: TextStyle(
           color: Color(0xFF00E5D4),
           fontSize: 16,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.normal,
         ),
       ),
     );
@@ -416,12 +421,12 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
       children: digits
           .map(
             (digit) => Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _buildDigitKey(digit),
-              ),
-            ),
-          )
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: _buildDigitKey(digit),
+          ),
+        ),
+      )
           .toList(),
     );
   }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class KeyboardController extends GetxController {
   final TextEditingController textController;
@@ -7,9 +11,6 @@ class KeyboardController extends GetxController {
   final VoidCallback? onEnterPressed;
   final String? Function(String)? validator;
 
-  /// When set, [insertText] refuses input that would make the text longer than
-  /// this (replacing a selection can still shrink or swap characters). Use the
-  /// same value as [TextField.maxLength] and pass it to [CustomKeyboard.maxLength].
   int? maxLength;
 
   final RxBool _isShiftActive = false.obs;
@@ -119,6 +120,18 @@ class KeyboardController extends GetxController {
     return true;
   }
 
+  bool closeKeyboard() {
+    textController.clear();
+
+    textController.selection = const TextSelection.collapsed(offset: 0);
+
+    _validationError.value = null;
+
+    focusNode.unfocus();
+
+    return true;
+  }
+
   void insertSpace() => insertText(' ');
 
   void toggleShift() {
@@ -162,10 +175,6 @@ class KeyboardController extends GetxController {
   void _onTextChanged() => _validate();
 
   List<List<String>> get currentLayout {
-    if (_isEmojiMode.value) return [];
-    if (_isNumericMode.value) {
-      return KeyboardConstants.numericLayout;
-    }
     return (_isShiftActive.value || _isCapsLock.value)
         ? KeyboardConstants.qwertyUpperLayout
         : KeyboardConstants.qwertyLayout;
@@ -173,37 +182,9 @@ class KeyboardController extends GetxController {
 }
 
 class KeyboardConstants {
-  static const Map<String, List<String>> alternateChars = {
-    'a': ['à', 'á', 'â', 'ä', 'æ', 'ã', 'å', 'ā'],
-    'c': ['ç', 'ć', 'č'],
-    'e': ['è', 'é', 'ê', 'ë', 'ē', 'ė', 'ę'],
-    'i': ['î', 'ï', 'í', 'ī', 'į', 'ì'],
-    'l': ['ł'],
-    'n': ['ñ', 'ń'],
-    'o': ['ô', 'ö', 'ò', 'ó', 'œ', 'ø', 'ō', 'õ'],
-    's': ['ß', 'ś', 'š'],
-    'u': ['û', 'ü', 'ù', 'ú', 'ū'],
-    'y': ['ÿ'],
-    'z': ['ž', 'ź', 'ż'],
-    '1': ['¹', '½', '⅓', '¼', '⅕'],
-    '2': ['²', '⅔', '⅖'],
-    '3': ['³', '¾', '⅗', '⅜'],
-    '4': ['⁴', '⅘'],
-    '5': ['⁵', '⅚', '⅝'],
-    '7': ['⁷', '⅞'],
-    '0': ['⁰', 'ⁿ', '∅'],
-    r'\': ['|'],
-    '-': ['—', '–', '•'],
-    r'$': ['€', '£', '¥', '¢', '₹'],
-    '"': ['„', '«', '»'],
-    '.': ['…', '•'],
-    '?': ['¿'],
-    '!': ['¡'],
-    "'": ['`', '´', '‘', '’'],
-  };
-
   static const List<List<String>> qwertyLayout = [
     [
+      '~|`',
       '1|!',
       '2|@',
       '3|#',
@@ -219,13 +200,28 @@ class KeyboardConstants {
       'BACKSPACE',
     ],
     ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', r'\'],
-    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '"', 'ENTER'],
-    ['CAPS', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'SHIFT'],
-    ['SPACE'],
+    ['CAPS', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '"'],
+    [
+      'SHIFT',
+      'z',
+      'x',
+      'c',
+      'v',
+      'b',
+      'n',
+      'm',
+      ',',
+      '.',
+      '/',
+      'LEFT ARROW',
+      'RIGHT ARROW',
+    ],
+    ['SPACE', 'ENTER'],
   ];
 
   static const List<List<String>> qwertyUpperLayout = [
     [
+      '~|`',
       '1|!',
       '2|@',
       '3|#',
@@ -241,22 +237,22 @@ class KeyboardConstants {
       'BACKSPACE',
     ],
     ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', r'\'],
-    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', '"', 'ENTER'],
-    ['CAPS', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 'SHIFT'],
-    ['SPACE'],
-  ];
-
-  static const List<List<String>> numericLayout = [
-    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-    ['@', '#', r'$', '_', '&', '-', '+', '(', ')', '/'],
-    ['*', '"', "'", ':', ';', '!', '?', '~', '`', 'BACKSPACE'],
-    ['ABC', '<', 'SPACE', '>', 'ENTER'],
-  ];
-
-  static const List<List<String>> symbolsLayout = [
-    ['%', '^', '*', '=', '{', '}', r'\', '|', '<', '>'],
-    ['€', '£', '¥', '¢', '©', '®', '™', '°', '§', '¶'],
-    ['½', '¼', '¾', '²', '³', '±', '×', '÷', '√', 'BACKSPACE'],
-    ['ABC', '[', 'SPACE', ']', 'ENTER'],
+    ['CAPS', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', '"'],
+    [
+      'SHIFT',
+      'Z',
+      'X',
+      'C',
+      'V',
+      'B',
+      'N',
+      'M',
+      ',',
+      '.',
+      '/',
+      'LEFT ARROW',
+      'RIGHT ARROW',
+    ],
+    ['SPACE', 'ENTER'],
   ];
 }
