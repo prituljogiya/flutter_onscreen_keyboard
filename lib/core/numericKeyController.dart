@@ -73,14 +73,9 @@ class NumericKeyboardController extends GetxController {
     return true;
   }
 
+  /// Dismisses the keyboard only: unfocuses the field. Does not clear text or
+  /// validation.
   bool closeKeyboard() {
-    // _validate();
-    // if (_validationError.value != null) {
-    //   return false;
-    // }
-    // clear();
-    textController.clear();
-
     focusNode.unfocus();
     return true;
   }

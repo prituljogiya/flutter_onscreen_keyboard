@@ -387,6 +387,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                 commitOnEnterOnly: widget.commitOnEnterOnly,
                 height: keyboardHeight,
                 maxLength: widget.maxLength,
+                onTapOutside: widget.onTapOutside,
               ),
             ),
             GestureDetector(

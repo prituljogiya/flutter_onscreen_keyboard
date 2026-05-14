@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class KeyboardController extends GetxController {
   final TextEditingController textController;
   final FocusNode focusNode;
+  /// Preview strip focus (cursor). May be set after [Get.find] if the controller
+  /// was created without it.
+  FocusNode? previewFocusNode;
   final VoidCallback? onEnterPressed;
   final String? Function(String)? validator;
 
@@ -15,22 +16,34 @@ class KeyboardController extends GetxController {
 
   final RxBool _isShiftActive = false.obs;
   final RxBool _isCapsLock = false.obs;
+  /// Second caps tap: uppercase + **symbol** row on dual keys (top character)
+  /// until Caps cycles off. First caps tap is uppercase + **digit** row (bottom).
+  /// Shift has no second level.
+  final RxBool _capsExtended = false.obs;
   final RxBool _isNumericMode = false.obs;
   final RxBool _isSymbolsMode = false.obs;
   final RxBool _isEmojiMode = false.obs;
   final RxnString _validationError = RxnString();
+  final RxnString _flashKeyId = RxnString();
+
+  Timer? _flashTimer;
 
   bool get isShiftActive => _isShiftActive.value;
   bool get isCapsLock => _isCapsLock.value;
+  bool get isCapsExtended => _capsExtended.value;
   bool get isNumericMode => _isNumericMode.value;
   bool get isSymbolsMode => _isSymbolsMode.value;
   bool get isEmojiMode => _isEmojiMode.value;
   String? get validationError => _validationError.value;
+  String? get flashKeyId => _flashKeyId.value;
+
+  RxnString get flashKeyRx => _flashKeyId;
   String get text => textController.text;
 
   KeyboardController({
     required this.textController,
     required this.focusNode,
+    this.previewFocusNode,
     this.onEnterPressed,
     this.validator,
     this.maxLength,
@@ -40,8 +53,39 @@ class KeyboardController extends GetxController {
 
   @override
   void onClose() {
+    _flashTimer?.cancel();
     textController.removeListener(_onTextChanged);
     super.onClose();
+  }
+
+  void flashKey(String keyId) {
+    _flashKeyId.value = keyId;
+    _flashTimer?.cancel();
+    _flashTimer = Timer(const Duration(milliseconds: 220), () {
+      _flashKeyId.value = null;
+    });
+  }
+
+  /// Whether a tap on a dual key (e.g. `1|!`) should insert the top symbol.
+  /// [Shift] → top. [Caps] once → bottom (digits). [Caps] twice → top (symbols).
+  bool get useTopCharacterOnDualKey {
+    if (_isShiftActive.value) return true;
+    if (_isCapsLock.value && _capsExtended.value) return true;
+    return false;
+  }
+
+  void moveCursor(int delta) {
+    final text = textController.text;
+    var selection = textController.selection;
+    if (!selection.isValid) {
+      final atEnd = text.length;
+      textController.selection = TextSelection.collapsed(offset: atEnd);
+      selection = textController.selection;
+    }
+    final base = selection.baseOffset;
+    final next = (base + delta).clamp(0, text.length);
+    if (next == base) return;
+    textController.selection = TextSelection.collapsed(offset: next);
   }
 
   void insertText(String text) {
@@ -71,7 +115,7 @@ class KeyboardController extends GetxController {
       offset: newSelectionOffset,
     );
 
-    if (_isShiftActive.value && !_isCapsLock.value) {
+    if (_isShiftActive.value) {
       _isShiftActive.value = false;
     }
     _validate();
@@ -116,17 +160,15 @@ class KeyboardController extends GetxController {
     }
 
     onEnterPressed?.call();
+    previewFocusNode?.unfocus();
     focusNode.unfocus();
     return true;
   }
 
+  /// Dismisses the keyboard only: unfocuses the field and preview. Does not
+  /// clear text, validation, or caps/shift state.
   bool closeKeyboard() {
-    textController.clear();
-
-    textController.selection = const TextSelection.collapsed(offset: 0);
-
-    _validationError.value = null;
-
+    previewFocusNode?.unfocus();
     focusNode.unfocus();
 
     return true;
@@ -138,11 +180,19 @@ class KeyboardController extends GetxController {
     _isShiftActive.value = !_isShiftActive.value;
   }
 
+  /// Caps cycles: off → uppercase + digit row on dual keys → uppercase + symbol
+  /// row on dual keys → off. Shift has no second level.
   void toggleCapsLock() {
-    _isCapsLock.value = !_isCapsLock.value;
-    if (_isCapsLock.value) {
-      _isShiftActive.value = false;
+    if (!_isCapsLock.value) {
+      _isCapsLock.value = true;
+      _capsExtended.value = false;
+    } else if (!_capsExtended.value) {
+      _capsExtended.value = true;
+    } else {
+      _isCapsLock.value = false;
+      _capsExtended.value = false;
     }
+    _isShiftActive.value = false;
   }
 
   void toggleNumeric() {

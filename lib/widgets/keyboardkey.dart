@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/theme_controller.dart';
-import 'package:flutter/material.dart';
+
 import '../core/theme_controller.dart';
 
 class KeyboardKey extends StatefulWidget {
@@ -11,6 +10,9 @@ class KeyboardKey extends StatefulWidget {
   final VoidCallback? onLongPressEnd;
   final bool isSpecial;
   final bool isActive;
+  /// Second-level Caps state (e.g. accent border).
+  final bool isSubActive;
+  final bool isFlashHighlight;
   final bool isWide;
   final double? width;
   final double? height;
@@ -27,6 +29,8 @@ class KeyboardKey extends StatefulWidget {
     this.onLongPressEnd,
     this.isSpecial = false,
     this.isActive = false,
+    this.isSubActive = false,
+    this.isFlashHighlight = false,
     this.isWide = false,
     this.width,
     this.height,
@@ -172,7 +176,10 @@ class _KeyboardKeyState extends State<KeyboardKey>
     Color textColor;
     Gradient? gradient;
 
-    if (widget.isActive) {
+    if (widget.isFlashHighlight) {
+      bgColor = widget.theme.activeKeyColor.withOpacity(0.92);
+      textColor = widget.theme.specialKeyTextColor;
+    } else if (widget.isActive) {
       bgColor = widget.theme.activeKeyColor;
       textColor = widget.theme.specialKeyTextColor;
     } else if (isSpecial) {
@@ -276,8 +283,14 @@ class _KeyboardKeyState extends State<KeyboardKey>
             color: gradient == null ? bgColor : null,
             borderRadius: BorderRadius.circular(widget.theme.borderRadius),
             border: Border.all(
-              color: widget.theme.keyBorderColor,
-              width: widget.theme.keyBorderWidth,
+              color: widget.isFlashHighlight
+                  ? const Color(0xFF00E5D4)
+                  : widget.isSubActive
+                      ? const Color(0xFFFFB74D)
+                      : widget.theme.keyBorderColor,
+              width: (widget.isFlashHighlight || widget.isSubActive)
+                  ? 2.2
+                  : widget.theme.keyBorderWidth,
             ),
             boxShadow: _isPressed
                 ? [

@@ -19,7 +19,9 @@ class NumericKeyboard extends StatefulWidget {
   final int? minValue;
   final int? maxValue;
 
-  /// Called after [focusNode.unfocus] when the user taps outside this keyboard.
+  /// Called when the user dismisses the keyboard without committing: after
+  /// [focusNode.unfocus] on outside tap, or immediately after the **close** (X)
+  /// runs [NumericKeyboardController.closeKeyboard]. Optional.
   final VoidCallback? onTapOutside;
 
   const NumericKeyboard({
@@ -200,6 +202,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                       ),
                       onPressed: () {
                         _keyboardController.closeKeyboard();
+                        widget.onTapOutside?.call();
                       },
                     ),
                   ),

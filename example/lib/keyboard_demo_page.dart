@@ -140,7 +140,9 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Letters, numbers row, Caps, and symbols. Typed text stays in a '
+            'Letters, Shift for symbols on the number row, Caps once for '
+            'uppercase + digits on that row, Caps twice for uppercase + symbols. '
+            'Typed text stays in a '
             'preview until you press Enter (then it commits to the field). '
             'Name uses maxLength ($_nameMaxLength); the keyboard stops adding '
             'characters once the preview reaches that length.',

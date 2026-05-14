@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../core/theme_controller.dart';
 
-import 'package:flutter/material.dart';
-
 class DualKey extends StatefulWidget {
   final String topChar;
   final String bottomChar;
@@ -14,6 +12,11 @@ class DualKey extends StatefulWidget {
   final KeyboardTheme theme;
   final double? width;
   final double? height;
+  /// When true, the character that is inserted on tap is shown larger/brighter.
+  final bool primaryIsTop;
+  /// Stronger highlight for the primary glyph (e.g. double-Caps lock).
+  final bool boostPrimary;
+  final bool isFlashHighlight;
 
   const DualKey({
     super.key,
@@ -26,6 +29,9 @@ class DualKey extends StatefulWidget {
     required this.theme,
     this.width,
     this.height,
+    this.primaryIsTop = false,
+    this.boostPrimary = false,
+    this.isFlashHighlight = false,
   });
 
   @override
@@ -155,8 +161,17 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final keyHeight = widget.height ?? 48;
-    final topFontSize = (keyHeight * 0.24).clamp(10.0, 13.0);
-    final bottomFontSize = (keyHeight * 0.28).clamp(11.0, 15.0);
+    final boost = widget.boostPrimary ? 1.22 : 1.0;
+    final topScale = (widget.primaryIsTop ? 1.12 : 0.92) * boost;
+    final bottomScale = (!widget.primaryIsTop ? 1.12 : 0.92) * boost;
+    final topFontSize = (keyHeight * 0.24 * topScale).clamp(10.0, 16.0);
+    final bottomFontSize = (keyHeight * 0.28 * bottomScale).clamp(11.0, 17.0);
+    final topWeight =
+        widget.primaryIsTop ? FontWeight.w800 : FontWeight.w600;
+    final bottomWeight =
+        widget.primaryIsTop ? FontWeight.w500 : FontWeight.w700;
+    final topOpacity = widget.primaryIsTop ? 1.0 : 0.55;
+    final bottomOpacity = widget.primaryIsTop ? 0.55 : 1.0;
     final verticalGap = keyHeight < 36 ? 0.0 : 2.0;
 
     return AnimatedBuilder(
@@ -182,8 +197,10 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
             ),
             borderRadius: BorderRadius.circular(widget.theme.borderRadius),
             border: Border.all(
-              color: widget.theme.keyBorderColor,
-              width: widget.theme.keyBorderWidth,
+              color: widget.isFlashHighlight
+                  ? widget.theme.activeKeyColor
+                  : widget.theme.keyBorderColor,
+              width: widget.isFlashHighlight ? 2.2 : widget.theme.keyBorderWidth,
             ),
             boxShadow: _isPressed
                 ? [
@@ -213,9 +230,9 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
                         widget.topChar,
                         maxLines: 1,
                         style: TextStyle(
-                          color: const Color(0xFF00E5D4),
+                          color: const Color(0xFF00E5D4).withOpacity(topOpacity),
                           fontSize: topFontSize,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: topWeight,
                           height: 1,
                         ),
                       ),
@@ -229,9 +246,10 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
                         widget.bottomChar,
                         maxLines: 1,
                         style: TextStyle(
-                          color: const Color(0xFFE0D0FF),
+                          color: const Color(0xFFE0D0FF)
+                              .withOpacity(bottomOpacity),
                           fontSize: bottomFontSize,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: bottomWeight,
                           height: 1,
                         ),
                       ),
