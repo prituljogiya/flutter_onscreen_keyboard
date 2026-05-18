@@ -18,6 +18,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
   static const int _ageMax = 60;
   static const int _quantityMin = 1;
   static const int _quantityMax = 200;
+  static const int _nameMinLength = 3;
   static const int _nameMaxLength = 24;
 
   final _nameController = TextEditingController();
@@ -100,6 +101,11 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
     return null;
   }
 
+  int? alphaMinLength() {
+    if (_activeFocusNode == _nameFocus) return _nameMinLength;
+    return null;
+  }
+
   int? alphaMaxLength() {
     if (_activeFocusNode == _nameFocus) return _nameMaxLength;
     return null;
@@ -140,14 +146,14 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Letters, Shift for symbols on the number row, Caps once for '
-            'uppercase + digits on that row, Caps twice for uppercase + symbols. '
+            'Shift: one capital letter and symbols on the number row. Caps: '
+            'double-tap for caps lock; tap again to turn off. '
             'Typed text stays in a '
             'preview until you press Enter (then it commits to the field). '
             'Fields use TextInputType.text for the QWERTY keyboard; number-style '
             'types open the numeric pad. '
-            'Name uses maxLength ($_nameMaxLength); the keyboard stops adding '
-            'characters once the preview reaches that length.',
+            'Name uses min length $_nameMinLength and max length $_nameMaxLength '
+            '(shown on the keyboard); Enter commits only when valid.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -155,7 +161,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
           const SizedBox(height: 12),
           _buildReadOnlyField(
             label: 'Name',
-            hint: 'Max $_nameMaxLength characters (field + keyboard)',
+            hint: '$_nameMinLength–$_nameMaxLength characters',
             controller: _nameController,
             focusNode: _nameFocus,
             keyboardType: TextInputType.text,
@@ -250,6 +256,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
                       pushContent: false,
                       useNumericKeyboard: _useNumericKeyboard,
                       maxLength: _useNumericKeyboard ? null : alphaMaxLength(),
+                      minLength: _useNumericKeyboard ? null : alphaMinLength(),
                       onTapOutside: _dismissKeyboardOverlay,
                       onEnterPressed: _dismissKeyboardOverlay,
                       child: formContent,
@@ -278,6 +285,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
                               controller: _activeController!,
                               focusNode: _activeFocusNode!,
                               commitOnEnterOnly: true,
+                              minLength: alphaMinLength(),
                               maxLength: alphaMaxLength(),
                               onTapOutside: _dismissKeyboardOverlay,
                               onEnterPressed: _dismissKeyboardOverlay,
