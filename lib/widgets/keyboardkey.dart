@@ -209,13 +209,10 @@ class _KeyboardKeyState extends State<KeyboardKey>
     } else if (widget.label == 'RIGHT ARROW') {
       keyContent = Icon(Icons.arrow_forward, color: textColor, size: 20);
     } else if (widget.label == 'SHIFT') {
-      keyContent = Text(
-        "Shift",
-        style: TextStyle(
-          color: textColor,
-          fontSize: widget.theme.fontSize,
-          fontWeight: FontWeight.normal,
-        ),
+      keyContent = Icon(
+        Icons.arrow_upward,
+        color: textColor,
+        size: 22,
       );
     } else if (widget.label == 'CAPS') {
       keyContent = Text(
@@ -285,10 +282,14 @@ class _KeyboardKeyState extends State<KeyboardKey>
             border: Border.all(
               color: widget.isFlashHighlight
                   ? const Color(0xFF00E5D4)
-                  : widget.isSubActive
-                      ? const Color(0xFFFFB74D)
-                      : widget.theme.keyBorderColor,
-              width: (widget.isFlashHighlight || widget.isSubActive)
+                  : widget.isActive && widget.isSpecial
+                      ? widget.theme.specialKeyTextColor
+                      : widget.isSubActive
+                          ? const Color(0xFFFFB74D)
+                          : widget.theme.keyBorderColor,
+              width: (widget.isFlashHighlight ||
+                      widget.isSubActive ||
+                      (widget.isActive && widget.isSpecial))
                   ? 2.2
                   : widget.theme.keyBorderWidth,
             ),
