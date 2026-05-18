@@ -5,6 +5,9 @@ export 'flutter_onscreen_keyboard_init.dart';
 export 'core/keyboard_controller.dart';
 export 'core/numericKeyController.dart';
 export 'core/onscreen_keyboard_mapping.dart';
+export 'core/onscreen_keyboard_config.dart';
+export 'core/onscreen_keyboard_colors.dart';
+export 'core/keyboard_theme_resolver.dart';
 export 'core/theme_controller.dart';
 
 export 'widgets/custom_keyboard.dart';
@@ -13,6 +16,9 @@ export 'widgets/duelKey.dart';
 export 'widgets/keyboardkey.dart';
 export 'widgets/numeric.dart';
 export 'widgets/numericKeyboardKey.dart';
+export 'widgets/onscreen_text_field.dart';
+export 'widgets/onscreen_keyboard_host.dart';
+export 'widgets/onscreen_field_session.dart';
 
 
 

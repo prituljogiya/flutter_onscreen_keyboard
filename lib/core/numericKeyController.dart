@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:get/get_rx/src/rx_types/rx_types.dart';
-import 'package:get/get_state_manager/src/simple/get_controllers.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get_rx/src/rx_types/rx_types.dart';
-import 'package:get/get_state_manager/src/simple/get_controllers.dart';
+import 'package:get/get.dart';
+
+import 'text_editing_controller_guard.dart';
 
 class NumericKeyboardController extends GetxController {
-  final TextEditingController textController;
+  TextEditingController textController;
   final FocusNode focusNode;
-  final String? Function(String)? validator;
+  String? Function(String)? validator;
 
   final RxnString _validationError = RxnString();
+  bool _active = true;
 
   String? get validationError => _validationError.value;
   String get text => textController.text;
+  bool get isActive => _active;
 
   NumericKeyboardController({
     required this.textController,
@@ -23,13 +23,37 @@ class NumericKeyboardController extends GetxController {
     textController.addListener(_onTextChanged);
   }
 
+  /// Called when [NumericKeyboard] is rebuilt with a new staging controller.
+  void rebind({
+    required TextEditingController textController,
+    String? Function(String)? validator,
+  }) {
+    if (!identical(this.textController, textController)) {
+      if (isTextEditingControllerUsable(this.textController)) {
+        this.textController.removeListener(_onTextChanged);
+      }
+      this.textController = textController;
+      textController.addListener(_onTextChanged);
+    }
+    this.validator = validator;
+    _active = true;
+  }
+
   @override
   void onClose() {
-    textController.removeListener(_onTextChanged);
+    _active = false;
+    if (isTextEditingControllerUsable(textController)) {
+      textController.removeListener(_onTextChanged);
+    }
     super.onClose();
   }
 
+  bool get _canEdit =>
+      _active && isTextEditingControllerUsable(textController);
+
   void insertDigit(String digit) {
+    if (!_canEdit) return;
+
     final currentText = textController.text;
 
     if (currentText == '0' && digit != '.') {
@@ -42,6 +66,8 @@ class NumericKeyboardController extends GetxController {
   }
 
   void insertDecimal() {
+    if (!_canEdit) return;
+
     final currentText = textController.text;
 
     if (!currentText.contains('.')) {
@@ -52,6 +78,8 @@ class NumericKeyboardController extends GetxController {
   }
 
   void backspace() {
+    if (!_canEdit) return;
+
     final currentText = textController.text;
 
     if (currentText.length > 1) {
@@ -65,6 +93,7 @@ class NumericKeyboardController extends GetxController {
 
   /// Returns true when value is valid; caller should commit / close UI.
   bool enter() {
+    if (!_canEdit) return false;
     _validate();
     if (_validationError.value != null) {
       return false;
@@ -81,16 +110,19 @@ class NumericKeyboardController extends GetxController {
   }
 
   void clear() {
+    if (!_canEdit) return;
     textController.text = '0';
     _validationError.value = null;
   }
 
   void cancel() {
+    if (!_canEdit) return;
     textController.text = '0';
     _validationError.value = null;
   }
 
   void _validate() {
+    if (!_canEdit) return;
     if (validator != null) {
       _validationError.value = validator!(textController.text);
     }

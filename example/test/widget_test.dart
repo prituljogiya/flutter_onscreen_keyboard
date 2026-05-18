@@ -1,43 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_onscreen_keyboard/custom_keyboard.dart';
-import 'package:get/get.dart';
 
-import 'package:flutter_onscreen_keyboard_example/keyboard_demo_page.dart';
+import 'test_harness.dart';
 
 void main() {
-  testWidgets('Shows on-screen keyboard demo', (WidgetTester tester) async {
-    await tester.pumpWidget(const OnscreenKeyboardBinding(child: _TestRoot()));
-    await tester.pumpAndSettle();
+  group('Keyboard demo smoke', () {
+    setUp(() => configureKeyboardTests(useCustomKeyboard: true));
+    tearDown(tearDownKeyboardTests);
 
-    expect(find.text('On-screen Keyboard Demo'), findsOneWidget);
-    expect(find.text('Showcase'), findsOneWidget);
-    expect(find.text('Custom keyboard'), findsOneWidget);
-    expect(find.text('Numeric keyboard'), findsOneWidget);
-    expect(find.text('Name'), findsOneWidget);
-    expect(find.text('Email'), findsOneWidget);
-    expect(find.text('Memo'), findsOneWidget);
-    expect(find.text('Access code'), findsOneWidget);
-    expect(find.text('Amount'), findsOneWidget);
-    expect(find.text('Age (18 – 60)'), findsOneWidget);
-    expect(find.text('Quantity (1 – 200)'), findsOneWidget);
+    testWidgets('shows all form sections and field labels', (tester) async {
+      addTearDown(() => resetTestViewport(tester));
+      await pumpKeyboardDemo(tester);
+
+      expect(find.text('On-screen Keyboard Demo'), findsOneWidget);
+      expect(find.text('Showcase'), findsOneWidget);
+      expect(find.text('Custom keyboard'), findsOneWidget);
+      expect(find.text('Numeric keyboard'), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('field_name')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('field_email')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('field_memo')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('field_age')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('field_quantity')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey<String>('field_pin')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('field_amount')),
+        findsOneWidget,
+      );
+    });
   });
-}
 
-class _TestRoot extends StatelessWidget {
-  const _TestRoot();
+  group('System keyboard mode', () {
+    setUp(() => configureKeyboardTests(useCustomKeyboard: false));
+    tearDown(tearDownKeyboardTests);
 
-  @override
-  Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (tc) {
-        return GetMaterialApp(
-          theme: tc.lightTheme,
-          darkTheme: tc.darkTheme,
-          themeMode: tc.themeMode,
-          home: const KeyboardDemoPage(),
-        );
-      },
-    );
-  }
+    testWidgets('fields are editable with platform keyboard', (tester) async {
+      addTearDown(() => resetTestViewport(tester));
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_name');
+
+      expect(find.byKey(customKeyboardPreviewKey), findsNothing);
+      expect(readField(tester, 'field_name').readOnly, isFalse);
+      expect(find.byType(CustomKeyboard), findsNothing);
+      expect(find.byType(NumericKeyboard), findsNothing);
+    });
+  });
 }

@@ -3,14 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'text_editing_controller_guard.dart';
+
 class KeyboardController extends GetxController {
-  final TextEditingController textController;
+  TextEditingController textController;
   final FocusNode focusNode;
   /// Preview strip focus (cursor). May be set after [Get.find] if the controller
   /// was created without it.
   FocusNode? previewFocusNode;
   final VoidCallback? onEnterPressed;
-  final String? Function(String)? validator;
+  String? Function(String)? validator;
 
   int? maxLength;
 
@@ -30,6 +32,11 @@ class KeyboardController extends GetxController {
   final RxnString _flashKeyId = RxnString();
 
   Timer? _flashTimer;
+  bool _active = true;
+
+  bool get isActive => _active;
+  bool get _canEdit =>
+      _active && isTextEditingControllerUsable(textController);
 
   bool get isShiftActive => _isShiftActive.value;
   bool get isCapsLock => _isCapsLock.value;
@@ -62,10 +69,36 @@ class KeyboardController extends GetxController {
     textController.addListener(_onTextChanged);
   }
 
+  void rebind({
+    required TextEditingController textController,
+    FocusNode? previewFocusNode,
+    String? Function(String)? validator,
+    int? maxLength,
+    int? minLength,
+  }) {
+    if (!identical(this.textController, textController)) {
+      if (isTextEditingControllerUsable(this.textController)) {
+        this.textController.removeListener(_onTextChanged);
+      }
+      this.textController = textController;
+      textController.addListener(_onTextChanged);
+    }
+    if (previewFocusNode != null) {
+      this.previewFocusNode = previewFocusNode;
+    }
+    this.validator = validator;
+    this.maxLength = maxLength;
+    this.minLength = minLength;
+    _active = true;
+  }
+
   @override
   void onClose() {
+    _active = false;
     _flashTimer?.cancel();
-    textController.removeListener(_onTextChanged);
+    if (isTextEditingControllerUsable(textController)) {
+      textController.removeListener(_onTextChanged);
+    }
     super.onClose();
   }
 
@@ -82,6 +115,7 @@ class KeyboardController extends GetxController {
   bool get useTopCharacterOnDualKey => _isShiftActive.value;
 
   void moveCursor(int delta) {
+    if (!_canEdit) return;
     final text = textController.text;
     var selection = textController.selection;
     if (!selection.isValid) {
@@ -94,7 +128,7 @@ class KeyboardController extends GetxController {
   }
 
   void insertText(String text) {
-    if (text.isEmpty) return;
+    if (!_canEdit || text.isEmpty) return;
 
     final currentText = textController.text;
     var selection = textController.selection;
@@ -123,6 +157,7 @@ class KeyboardController extends GetxController {
   }
 
   void backspace() {
+    if (!_canEdit) return;
     final currentText = textController.text;
     var selection = textController.selection;
 
@@ -155,6 +190,7 @@ class KeyboardController extends GetxController {
   /// Applies text + caret in one [TextEditingValue] so the preview [TextField]
   /// keeps a visible caret (separate `.text` / `.selection` updates can hide it).
   void _applyEditingValue(String text, int caretOffset) {
+    if (!_canEdit) return;
     final offset = caretOffset.clamp(0, text.length);
     textController.value = TextEditingValue(
       text: text,
@@ -165,6 +201,7 @@ class KeyboardController extends GetxController {
   }
 
   bool enter() {
+    if (!_canEdit) return false;
     _validate();
     if (_validationError.value != null) {
       return false;
@@ -234,6 +271,7 @@ class KeyboardController extends GetxController {
   }
 
   void clear() {
+    if (!_canEdit) return;
     textController.clear();
     _validationError.value = null;
   }
@@ -242,6 +280,7 @@ class KeyboardController extends GetxController {
   void validateNow() => _validate();
 
   void _validate() {
+    if (!_canEdit) return;
     final value = textController.text;
     String? error;
 

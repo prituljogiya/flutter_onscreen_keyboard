@@ -3,6 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'onscreen_keyboard_colors.dart';
+import 'onscreen_keyboard_config.dart';
+
 /// Owns [KeyboardTheme] and Material [ThemeData] for the host app and keyboards.
 /// Call [updateTheme], [customizeKeyboardTheme], or [toggleTheme]; wrap
 /// [GetMaterialApp] with [GetBuilder]<[ThemeController]> so scaffold colors stay
@@ -25,6 +28,14 @@ class ThemeController extends GetxController {
   Rx<KeyboardTheme> get keyboardThemeRx => _keyboardTheme;
 
   ThemeController() {
+    final cfg = globalOnscreenKeyboardConfig;
+    if (cfg.keyboardTheme != null && cfg.replaceDefaultTheme) {
+      _keyboardTheme.value = cfg.keyboardTheme!;
+      _isDarkMode.value =
+          cfg.keyboardTheme!.backgroundColor.computeLuminance() < 0.4;
+      return;
+    }
+
     final brightness = PlatformDispatcher.instance.platformBrightness;
 
     _isDarkMode.value = brightness == Brightness.dark;
@@ -47,6 +58,11 @@ class ThemeController extends GetxController {
   }
 
   void toggleTheme() {
+    if (globalOnscreenKeyboardConfig.lockKeyboardTheme &&
+        globalOnscreenKeyboardConfig.keyboardTheme != null) {
+      return;
+    }
+
     _isDarkMode.value = !_isDarkMode.value;
 
     _keyboardTheme.value = _isDarkMode.value
@@ -107,6 +123,35 @@ class KeyboardTheme {
   final double keyElevation;
   final Color shadowColor;
   final Gradient primaryGradient;
+
+  /// Builds a full [KeyboardTheme] from [OnscreenKeyboardColors] (all colors in one place).
+  factory KeyboardTheme.fromColors(OnscreenKeyboardColors colors) {
+    final border = colors.keyBorder ?? colors.keyText.withValues(alpha: 0.3);
+    final shadow = colors.shadow ?? Colors.black.withValues(alpha: 0.4);
+    final gradientTop = colors.gradientTop ?? colors.keyBackground;
+    final gradientBottom = colors.gradientBottom ?? colors.keyBackground;
+
+    return KeyboardTheme(
+      backgroundColor: colors.background,
+      keyBackgroundColor: colors.keyBackground,
+      keyTextColor: colors.keyText,
+      specialKeyColor: colors.specialKeyBackground,
+      specialKeyTextColor: colors.specialKeyText,
+      activeKeyColor: colors.activeKey,
+      keyBorderColor: border,
+      keyBorderWidth: colors.keyBorderWidth,
+      borderRadius: colors.borderRadius,
+      fontSize: colors.fontSize,
+      keySpacing: colors.keySpacing,
+      keyElevation: colors.keyElevation,
+      shadowColor: shadow,
+      primaryGradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [gradientTop, gradientBottom],
+      ),
+    );
+  }
 
   const KeyboardTheme({
     required this.backgroundColor,

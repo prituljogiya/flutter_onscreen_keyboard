@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_onscreen_keyboard/custom_keyboard.dart';
 
-/// Demo page for [CustomKeyboard] (QWERTY, preview until Enter, optional
-/// validators) and [NumericKeyboard] (digits, optional min/max on the panel,
-/// Enter to commit).
+/// Demo: [OnscreenKeyboardHost] + [OnscreenTextField] replace the system keyboard
+/// when [OnscreenKeyboardConfig.useCustomKeyboard] is true (see `main.dart`).
 class KeyboardDemoPage extends StatefulWidget {
   const KeyboardDemoPage({super.key});
 
@@ -26,7 +25,6 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
   final _memoController = TextEditingController();
   final _ageController = TextEditingController();
   final _quantityController = TextEditingController();
-
   final _pinController = TextEditingController();
   final _amountController = TextEditingController();
 
@@ -35,13 +33,8 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
   final _memoFocus = FocusNode();
   final _ageFocus = FocusNode();
   final _quantityFocus = FocusNode();
-
   final _pinFocus = FocusNode();
   final _amountFocus = FocusNode();
-
-  TextEditingController? _activeController;
-  FocusNode? _activeFocusNode;
-  bool _useNumericKeyboard = false;
 
   @override
   void dispose() {
@@ -62,33 +55,6 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
     super.dispose();
   }
 
-  void _activateAlpha(TextEditingController controller, FocusNode focusNode) {
-    setState(() {
-      _activeController = controller;
-      _activeFocusNode = focusNode;
-      _useNumericKeyboard = false;
-    });
-    focusNode.requestFocus();
-  }
-
-  void _activateNumeric(TextEditingController controller, FocusNode focusNode) {
-    setState(() {
-      _activeController = controller;
-      _activeFocusNode = focusNode;
-      _useNumericKeyboard = true;
-    });
-    focusNode.requestFocus();
-  }
-
-  void _dismissKeyboardOverlay() {
-    if (!mounted) return;
-    setState(() {
-      _activeController = null;
-      _activeFocusNode = null;
-      _useNumericKeyboard = false;
-    });
-  }
-
   String? _pinValidator(String value) {
     if (value.isEmpty) return 'Enter the code';
     if (value.length != 4) return 'Use exactly 4 digits';
@@ -96,141 +62,134 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
     return null;
   }
 
-  String? Function(String)? numericValidator() {
-    if (_activeFocusNode == _pinFocus) return _pinValidator;
-    return null;
-  }
-
-  int? alphaMinLength() {
-    if (_activeFocusNode == _nameFocus) return _nameMinLength;
-    return null;
-  }
-
-  int? alphaMaxLength() {
-    if (_activeFocusNode == _nameFocus) return _nameMaxLength;
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final isLandscape = media.orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final usingCustom = FlutterOnscreenKeyboard.useCustomKeyboard;
 
-    int? numericKeyboardMin;
-    int? numericKeyboardMax;
-    if (_useNumericKeyboard && _activeFocusNode != null) {
-      if (_activeFocusNode == _amountFocus) {
-        numericKeyboardMin = _amountMin;
-        numericKeyboardMax = _amountMax;
-      } else if (_activeFocusNode == _ageFocus) {
-        numericKeyboardMin = _ageMin;
-        numericKeyboardMax = _ageMax;
-      } else if (_activeFocusNode == _quantityFocus) {
-        numericKeyboardMin = _quantityMin;
-        numericKeyboardMax = _quantityMax;
-      }
-    }
-
-    final formContent = SingleChildScrollView(
+    final form = SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ShowcaseIntroCard(isLandscape: isLandscape),
+          _ShowcaseIntroCard(
+            isLandscape: isLandscape,
+            useCustomKeyboard: usingCustom,
+          ),
           const SizedBox(height: 20),
           Text(
             'Custom keyboard',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Shift: one capital letter and symbols on the number row. Caps: '
-            'double-tap for caps lock; tap again to turn off. '
-            'Typed text stays in a '
-            'preview until you press Enter (then it commits to the field). '
-            'Fields use TextInputType.text for the QWERTY keyboard; number-style '
-            'types open the numeric pad. '
-            'Name uses min length $_nameMinLength and max length $_nameMaxLength '
-            '(shown on the keyboard); Enter commits only when valid.',
+            'Shift / Caps behave like a default keyboard. Name: min $_nameMinLength, '
+            'max $_nameMaxLength. Preview text commits on Enter.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           const SizedBox(height: 12),
-          _buildReadOnlyField(
-            label: 'Name',
-            hint: '$_nameMinLength–$_nameMaxLength characters',
+          OnscreenTextField(
+            fieldKey: const ValueKey<String>('field_name'),
             controller: _nameController,
             focusNode: _nameFocus,
             keyboardType: TextInputType.text,
+            minLength: _nameMinLength,
             maxLength: _nameMaxLength,
+            decoration: InputDecoration(
+              labelText: 'Name',
+              hintText: '$_nameMinLength–$_nameMaxLength characters',
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
-          _buildReadOnlyField(
-            label: 'Email',
-            hint: 'Same keyboard — preview, then Enter',
+          OnscreenTextField(
+            fieldKey: const ValueKey<String>('field_email'),
             controller: _emailController,
             focusNode: _emailFocus,
             keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              hintText: 'Preview, then Enter',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
-          _buildReadOnlyField(
-            label: 'Memo',
-            hint: 'Longer free text on the alpha keyboard',
+          OnscreenTextField(
+            fieldKey: const ValueKey<String>('field_memo'),
             controller: _memoController,
             focusNode: _memoFocus,
             keyboardType: TextInputType.multiline,
+            decoration: const InputDecoration(
+              labelText: 'Memo',
+              hintText: 'Free text',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 28),
           Text(
             'Numeric keyboard',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Digits only. Age and Quantity use Min / Max on the keyboard. '
-            'Access code has no range (custom rule). Amount uses its own range. '
-            'Enter commits when valid.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 12),
-          _buildReadOnlyField(
-            label: 'Age ($_ageMin – $_ageMax)',
-            hint: 'Numeric keyboard — range on keys',
+          OnscreenTextField(
+            fieldKey: const ValueKey<String>('field_age'),
             controller: _ageController,
             focusNode: _ageFocus,
             keyboardType: TextInputType.number,
+            minValue: _ageMin,
+            maxValue: _ageMax,
+            decoration: InputDecoration(
+              labelText: 'Age ($_ageMin – $_ageMax)',
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
-          _buildReadOnlyField(
-            label: 'Quantity ($_quantityMin – $_quantityMax)',
-            hint: 'Numeric keyboard — range on keys',
+          OnscreenTextField(
+            fieldKey: const ValueKey<String>('field_quantity'),
             controller: _quantityController,
             focusNode: _quantityFocus,
             keyboardType: TextInputType.number,
+            minValue: _quantityMin,
+            maxValue: _quantityMax,
+            decoration: InputDecoration(
+              labelText: 'Quantity ($_quantityMin – $_quantityMax)',
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
-          _buildReadOnlyField(
-            label: 'Access code',
-            hint: '4 digits — no min/max on keyboard, custom rule on Enter',
+          OnscreenTextField(
+            fieldKey: const ValueKey<String>('field_pin'),
             controller: _pinController,
             focusNode: _pinFocus,
             keyboardType: TextInputType.number,
+            validator: _pinValidator,
+            decoration: const InputDecoration(
+              labelText: 'Access code',
+              hintText: '4 digits',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
-          _buildReadOnlyField(
-            label: 'Amount',
-            hint:
-                'Min / max $_amountMin–$_amountMax on keyboard; Enter must pass range',
+          OnscreenTextField(
+            fieldKey: const ValueKey<String>('field_amount'),
             controller: _amountController,
             focusNode: _amountFocus,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            minValue: _amountMin,
+            maxValue: _amountMax,
+            decoration: InputDecoration(
+              labelText: 'Amount',
+              hintText: '$_amountMin–$_amountMax',
+              border: const OutlineInputBorder(),
+            ),
           ),
         ],
       ),
@@ -239,107 +198,23 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('On-screen Keyboard Demo')),
       body: SafeArea(
-        child: _activeController != null && _activeFocusNode != null
-            ? (isLandscape
-                  ? DraggableDynamicKeyboard(
-                      controller: _activeController!,
-                      focusNode: _activeFocusNode!,
-                      validator: _useNumericKeyboard
-                          ? numericValidator()
-                          : null,
-                      numericMinValue: numericKeyboardMin,
-                      numericMaxValue: numericKeyboardMax,
-                      widthFactor: 0.5,
-                      heightFactor: 0.5,
-                      fullWidthInLandscape: false,
-                      alwaysVisible: true,
-                      pushContent: false,
-                      useNumericKeyboard: _useNumericKeyboard,
-                      maxLength: _useNumericKeyboard ? null : alphaMaxLength(),
-                      minLength: _useNumericKeyboard ? null : alphaMinLength(),
-                      onTapOutside: _dismissKeyboardOverlay,
-                      onEnterPressed: _dismissKeyboardOverlay,
-                      child: formContent,
-                    )
-                  : TapRegion(
-                      onTapOutside: (_) {
-                        _activeFocusNode?.unfocus();
-                        _dismissKeyboardOverlay();
-                      },
-                      child: Column(
-                        children: [
-                          Expanded(child: formContent),
-                          if (_useNumericKeyboard)
-                            NumericKeyboard(
-                              controller: _activeController!,
-                              focusNode: _activeFocusNode!,
-                              commitOnEnterOnly: true,
-                              minValue: numericKeyboardMin,
-                              maxValue: numericKeyboardMax,
-                              validator: numericValidator(),
-                              onTapOutside: _dismissKeyboardOverlay,
-                              onEnterPressed: _dismissKeyboardOverlay,
-                            )
-                          else
-                            CustomKeyboard(
-                              controller: _activeController!,
-                              focusNode: _activeFocusNode!,
-                              commitOnEnterOnly: true,
-                              minLength: alphaMinLength(),
-                              maxLength: alphaMaxLength(),
-                              onTapOutside: _dismissKeyboardOverlay,
-                              onEnterPressed: _dismissKeyboardOverlay,
-                            ),
-                        ],
-                      ),
-                    ))
-            : formContent,
-      ),
-    );
-  }
-
-  void _openFieldForKeyboardType(
-    TextEditingController controller,
-    FocusNode focusNode,
-    TextInputType keyboardType,
-  ) {
-    final numeric = preferOnscreenNumericKeyboard(keyboardType);
-    if (numeric) {
-      _activateNumeric(controller, focusNode);
-    } else {
-      _activateAlpha(controller, focusNode);
-    }
-  }
-
-  Widget _buildReadOnlyField({
-    required String label,
-    required String hint,
-    required TextEditingController controller,
-    required FocusNode focusNode,
-    required TextInputType keyboardType,
-    int? maxLength,
-  }) {
-    return TextField(
-      controller: controller,
-      focusNode: focusNode,
-      keyboardType: keyboardType,
-      readOnly: true,
-      showCursor: true,
-      onTap: () => _openFieldForKeyboardType(controller, focusNode, keyboardType),
-      maxLength: maxLength,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        border: const OutlineInputBorder(),
+        child: OnscreenKeyboardHost(
+          commitOnEnterOnly: true,
+          child: form,
+        ),
       ),
     );
   }
 }
 
 class _ShowcaseIntroCard extends StatelessWidget {
-  const _ShowcaseIntroCard({required this.isLandscape});
+  const _ShowcaseIntroCard({
+    required this.isLandscape,
+    required this.useCustomKeyboard,
+  });
 
   final bool isLandscape;
+  final bool useCustomKeyboard;
 
   @override
   Widget build(BuildContext context) {
@@ -354,31 +229,24 @@ class _ShowcaseIntroCard extends StatelessWidget {
           children: [
             Text(
               'Showcase',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
-              'This screen compares the two base widgets from the package: '
-              'CustomKeyboard for general typing and NumericKeyboard for '
-              'integer-style input. Tap a field to open the matching keyboard.',
+              useCustomKeyboard
+                  ? 'Plugin replaces the system keyboard. Global theme is set in '
+                      'main() via FlutterOnscreenKeyboard.configure.'
+                  : 'USE_CUSTOM_KEYBOARD=false — fields use the normal system keyboard.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
             _Bullet(
               icon: Icons.keyboard_alt_outlined,
               text: isLandscape
-                  ? 'Landscape: floating draggable panel (same widgets, '
-                        'different chrome).'
-                  : 'Portrait: keyboard is fixed to the bottom of the screen.',
-            ),
-            const SizedBox(height: 6),
-            const _Bullet(
-              icon: Icons.touch_app_outlined,
-              text:
-                  'Dismiss with Enter after a valid commit, or tap outside the '
-                  'keyboard (the form area above it) to close without committing.',
+                  ? 'Landscape: draggable keyboard panel.'
+                  : 'Portrait: keyboard fixed to the bottom.',
             ),
           ],
         ),

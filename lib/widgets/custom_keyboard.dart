@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' hide KeyboardKey;
 import 'package:flutter_onscreen_keyboard/core/keyboard_controller.dart';
 import 'package:flutter_onscreen_keyboard/widgets/keyboardkey.dart';
 import 'package:get/get.dart';
+import '../core/keyboard_theme_resolver.dart';
 import '../core/theme_controller.dart';
 import 'duelKey.dart';
 
@@ -61,6 +62,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   late final FocusNode _closeButtonFocusNode;
   /// Skips [ _schedulePreviewCaretRefocus ] while closing so we do not refocus.
   bool _suppressPreviewRefocus = false;
+  bool _teardown = false;
   Timer? _backspaceTimer;
 
   void _ensurePreviewSelectionAtEnd() {
@@ -93,6 +95,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     VoidCallback action, {
     bool refocusPreview = true,
   }) {
+    if (!mounted || _teardown || !_keyboardController.isActive) return;
     if (refocusPreview) {
       _retainPreviewFocus();
     }
@@ -131,9 +134,13 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     final tag = widget.focusNode.hashCode.toString();
     if (Get.isRegistered<KeyboardController>(tag: tag)) {
       _keyboardController = Get.find<KeyboardController>(tag: tag);
-      _keyboardController.maxLength = widget.maxLength;
-      _keyboardController.minLength = widget.minLength;
-      _keyboardController.previewFocusNode = _previewFocusNode;
+      _keyboardController.rebind(
+        textController: _inputController,
+        previewFocusNode: _previewFocusNode,
+        validator: widget.validator,
+        maxLength: widget.maxLength,
+        minLength: widget.minLength,
+      );
     } else {
       _keyboardController = KeyboardController(
         textController: _inputController,
@@ -174,6 +181,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
 
   @override
   void dispose() {
+    _teardown = true;
     widget.focusNode.removeListener(_onHostFieldFocusChanged);
     final tag = widget.focusNode.hashCode.toString();
     if (Get.isRegistered<KeyboardController>(tag: tag)) {
@@ -203,19 +211,10 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.keyboardTheme != null) {
-      return _buildKeyboardShell(context, widget.keyboardTheme!);
-    }
-    if (!Get.isRegistered<ThemeController>()) {
-      return _buildKeyboardShell(context, KeyboardTheme.purpleCyan());
-    }
-    return Obx(() {
-      Get.find<ThemeController>().keyboardThemeRx.value;
-      return _buildKeyboardShell(
-        context,
-        Get.find<ThemeController>().keyboardTheme,
-      );
-    });
+    return buildKeyboardWithResolvedTheme(
+      widgetOverride: widget.keyboardTheme,
+      builder: (theme) => _buildKeyboardShell(context, theme),
+    );
   }
 
   Widget _buildKeyboardShell(BuildContext context, KeyboardTheme theme) {
@@ -265,17 +264,17 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
           }),
           if (widget.minLength != null || widget.maxLength != null)
             Padding(
-              padding: const EdgeInsets.only(left: 10, bottom: 4),
-              child: Row(
+              padding: const EdgeInsets.only(left: 10, right: 8, bottom: 4),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
                 children: [
-                  if (widget.minLength != null) ...[
+                  if (widget.minLength != null)
                     _lengthBoundField(
                       theme,
                       'Min Length',
                       '${widget.minLength}',
                     ),
-                    const SizedBox(width: 8),
-                  ],
                   if (widget.maxLength != null)
                     _lengthBoundField(
                       theme,

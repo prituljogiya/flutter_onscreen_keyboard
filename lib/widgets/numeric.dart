@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../core/keyboard_theme_resolver.dart';
 import '../core/numericKeyController.dart';
 import '../core/theme_controller.dart';
 import 'numerickeyboardkey.dart';
@@ -53,6 +54,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   late NumericKeyboardController _keyboardController;
   late TextEditingController _inputController;
   late bool _ownsInputController;
+  bool _teardown = false;
 
   @override
   void initState() {
@@ -73,6 +75,10 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     final tag = widget.focusNode.hashCode.toString();
     if (Get.isRegistered<NumericKeyboardController>(tag: tag)) {
       _keyboardController = Get.find<NumericKeyboardController>(tag: tag);
+      _keyboardController.rebind(
+        textController: _inputController,
+        validator: _combinedValidate,
+      );
     } else {
       _keyboardController = NumericKeyboardController(
         textController: _inputController,
@@ -81,6 +87,11 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
       );
       Get.put(_keyboardController, tag: tag);
     }
+  }
+
+  void _runKeyAction(VoidCallback action) {
+    if (!mounted || _teardown || !_keyboardController.isActive) return;
+    action();
   }
 
   String? _combinedValidate(String value) {
@@ -122,6 +133,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
 
   @override
   void dispose() {
+    _teardown = true;
     final tag = widget.focusNode.hashCode.toString();
     if (Get.isRegistered<NumericKeyboardController>(tag: tag)) {
       Get.delete<NumericKeyboardController>(tag: tag);
@@ -141,19 +153,10 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.keyboardTheme != null) {
-      return _buildWithTheme(context, widget.keyboardTheme!);
-    }
-    if (!Get.isRegistered<ThemeController>()) {
-      return _buildWithTheme(context, KeyboardTheme.purpleCyan());
-    }
-    return Obx(() {
-      Get.find<ThemeController>().keyboardThemeRx.value;
-      return _buildWithTheme(
-        context,
-        Get.find<ThemeController>().keyboardTheme,
-      );
-    });
+    return buildKeyboardWithResolvedTheme(
+      widgetOverride: widget.keyboardTheme,
+      builder: (theme) => _buildWithTheme(context, theme),
+    );
   }
 
   Widget _buildWithTheme(BuildContext context, KeyboardTheme theme) {
@@ -239,18 +242,18 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
             ),
             if (widget.minValue != null || widget.maxValue != null)
               Padding(
-                padding: const EdgeInsets.only(left: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                padding: const EdgeInsets.only(left: 12, right: 8),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    if (widget.minValue != null) ...[
+                    if (widget.minValue != null)
                       _boundField(
                         theme,
                         'Min Value',
                         '${widget.minValue}',
                       ),
-                      const SizedBox(width: 4),
-                    ],
                     if (widget.maxValue != null)
                       _boundField(
                         theme,
@@ -384,7 +387,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   Widget _backSpaceKey(KeyboardTheme theme) {
     return NumericKey(
       theme: theme,
-      onTap: () => _keyboardController.backspace(),
+      onTap: () => _runKeyAction(_keyboardController.backspace),
       isSpecial: true,
       child: Icon(
         Icons.backspace_outlined,
@@ -397,7 +400,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   Widget _decimalKey(KeyboardTheme theme) {
     return NumericKey(
       theme: theme,
-      onTap: () => _keyboardController.insertDecimal(),
+      onTap: () => _runKeyAction(_keyboardController.insertDecimal),
       isSpecial: true,
       child: Text(
         '.',
@@ -413,7 +416,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   Widget _ctrlKey(KeyboardTheme theme) {
     return NumericKey(
       theme: theme,
-      onTap: () => _keyboardController.clear(),
+      onTap: () => _runKeyAction(_keyboardController.clear),
       isSpecial: true,
       child: Text(
         'Clear',
@@ -430,18 +433,20 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     return NumericKey(
       theme: theme,
       onTap: () {
-        final success = _keyboardController.enter();
-        if (!success) return;
+        _runKeyAction(() {
+          final success = _keyboardController.enter();
+          if (!success) return;
 
-        if (widget.commitOnEnterOnly) {
-          widget.controller.text = _inputController.text;
-          widget.controller.selection = TextSelection.collapsed(
-            offset: widget.controller.text.length,
-          );
-        }
+          if (widget.commitOnEnterOnly) {
+            widget.controller.text = _inputController.text;
+            widget.controller.selection = TextSelection.collapsed(
+              offset: widget.controller.text.length,
+            );
+          }
 
-        widget.onSubmitted?.call(_inputController.text);
-        widget.onEnterPressed?.call();
+          widget.onSubmitted?.call(_inputController.text);
+          widget.onEnterPressed?.call();
+        });
       },
       isSpecial: true,
       child: Text(
@@ -473,7 +478,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   Widget _buildDigitKey(KeyboardTheme theme, String digit) {
     return NumericKey(
       theme: theme,
-      onTap: () => _keyboardController.insertDigit(digit),
+      onTap: () => _runKeyAction(() => _keyboardController.insertDigit(digit)),
       child: Text(
         digit,
         style: TextStyle(

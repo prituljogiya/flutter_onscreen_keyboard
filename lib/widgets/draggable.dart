@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../core/keyboard_theme_resolver.dart';
 import '../core/theme_controller.dart';
 import 'custom_keyboard.dart';
 import 'numeric.dart';
@@ -349,16 +350,10 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
       );
     }
 
-    if (widget.keyboardTheme != null) {
-      return buildWithTheme(widget.keyboardTheme!);
-    }
-    if (!Get.isRegistered<ThemeController>()) {
-      return buildWithTheme(KeyboardTheme.purpleCyan());
-    }
-    return Obx(() {
-      Get.find<ThemeController>().keyboardThemeRx.value;
-      return buildWithTheme(Get.find<ThemeController>().keyboardTheme);
-    });
+    return buildKeyboardWithResolvedTheme(
+      widgetOverride: widget.keyboardTheme,
+      builder: buildWithTheme,
+    );
   }
 
   Widget _buildKeyboardPanel(KeyboardTheme theme,
