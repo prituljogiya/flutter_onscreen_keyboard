@@ -21,6 +21,9 @@ class CustomKeyboard extends StatefulWidget {
   /// on the custom keyboard once the (preview) text reaches this length.
   final int? maxLength;
 
+  /// Minimum preview length before Enter commits (shown on the keyboard panel).
+  final int? minLength;
+
   /// Called when the user dismisses the keyboard without committing: after
   /// [focusNode.unfocus] on outside tap (when the host wraps the keyboard in a
   /// parent [TapRegion]), or immediately after the preview **close** (X) runs
@@ -40,6 +43,7 @@ class CustomKeyboard extends StatefulWidget {
     this.commitOnEnterOnly = false,
     this.height,
     this.maxLength,
+    this.minLength,
     this.onTapOutside,
     this.keyboardTheme,
   });
@@ -59,12 +63,29 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   bool _suppressPreviewRefocus = false;
   Timer? _backspaceTimer;
 
+  void _ensurePreviewSelectionAtEnd() {
+    final text = _inputController.text;
+    final selection = _inputController.selection;
+    if (!selection.isValid && text.isNotEmpty) {
+      _inputController.selection = TextSelection.collapsed(offset: text.length);
+    }
+  }
+
   void _onHostFieldFocusChanged() {
     if (!widget.focusNode.hasFocus) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _ensurePreviewSelectionAtEnd();
       _previewFocusNode.requestFocus();
     });
+  }
+
+  void _retainPreviewFocus() {
+    if (!mounted || _suppressPreviewRefocus) return;
+    if (!_previewFocusNode.canRequestFocus) return;
+    if (!_previewFocusNode.hasFocus) {
+      _previewFocusNode.requestFocus();
+    }
   }
 
   void _runWithKeyFlash(
@@ -72,19 +93,14 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     VoidCallback action, {
     bool refocusPreview = true,
   }) {
+    if (refocusPreview) {
+      _retainPreviewFocus();
+    }
     _keyboardController.flashKey(id);
     action();
     if (refocusPreview) {
-      _schedulePreviewCaretRefocus();
+      _retainPreviewFocus();
     }
-  }
-
-  void _schedulePreviewCaretRefocus() {
-    if (!mounted || _suppressPreviewRefocus) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _suppressPreviewRefocus) return;
-      _previewFocusNode.requestFocus();
-    });
   }
 
   @override
@@ -101,8 +117,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     _inputController = _ownsInputController
         ? TextEditingController(text: widget.controller.text)
         : widget.controller;
+    _ensurePreviewSelectionAtEnd();
     _initController();
-    _inputController.addListener(_schedulePreviewCaretRefocus);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (widget.focusNode.hasFocus) {
@@ -116,6 +132,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     if (Get.isRegistered<KeyboardController>(tag: tag)) {
       _keyboardController = Get.find<KeyboardController>(tag: tag);
       _keyboardController.maxLength = widget.maxLength;
+      _keyboardController.minLength = widget.minLength;
       _keyboardController.previewFocusNode = _previewFocusNode;
     } else {
       _keyboardController = KeyboardController(
@@ -124,9 +141,11 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         previewFocusNode: _previewFocusNode,
         validator: widget.validator,
         maxLength: widget.maxLength,
+        minLength: widget.minLength,
       );
       Get.put(_keyboardController, tag: tag);
     }
+    _keyboardController.validateNow();
   }
 
   @override
@@ -145,11 +164,16 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     if (widget.maxLength != oldWidget.maxLength) {
       _keyboardController.maxLength = widget.maxLength;
     }
+    if (widget.minLength != oldWidget.minLength ||
+        widget.maxLength != oldWidget.maxLength ||
+        widget.validator != oldWidget.validator) {
+      _keyboardController.minLength = widget.minLength;
+      _keyboardController.validateNow();
+    }
   }
 
   @override
   void dispose() {
-    _inputController.removeListener(_schedulePreviewCaretRefocus);
     widget.focusNode.removeListener(_onHostFieldFocusChanged);
     final tag = widget.focusNode.hashCode.toString();
     if (Get.isRegistered<KeyboardController>(tag: tag)) {
@@ -239,10 +263,38 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
               ),
             );
           }),
+          if (widget.minLength != null || widget.maxLength != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 10, bottom: 4),
+              child: Row(
+                children: [
+                  if (widget.minLength != null) ...[
+                    _lengthBoundField(
+                      theme,
+                      'Min Length',
+                      '${widget.minLength}',
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  if (widget.maxLength != null)
+                    _lengthBoundField(
+                      theme,
+                      'Max Length',
+                      '${widget.maxLength}',
+                    ),
+                ],
+              ),
+            ),
           Expanded(
-            child: Obx(() {
+            child: Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerDown: (_) => _retainPreviewFocus(),
+              child: Obx(() {
               final layout = _keyboardController.currentLayout;
               final flashKeyId = _keyboardController.flashKeyRx.value;
+              // Repaint Shift/Caps when modifiers change (not only on layout swap).
+              _keyboardController.isShiftActiveRx.value;
+              _keyboardController.isCapsLockRx.value;
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final horizontalPadding = isLandscape ? 3.0 : 4.0;
@@ -277,9 +329,35 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                 },
               );
             }),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _lengthBoundField(KeyboardTheme theme, String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: theme.specialKeyTextColor,
+            fontSize: 13,
+            fontWeight: FontWeight.normal,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          value,
+          style: TextStyle(
+            color: theme.keyTextColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 
@@ -328,9 +406,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                 cursorColor: caretColor,
                 cursorWidth: 2.5,
                 showCursor: true,
-                readOnly: false,
-                inputFormatters: const [_SoftKeyboardBlockFormatter()],
-                enableInteractiveSelection: true,
+                readOnly: true,
+                enableInteractiveSelection: false,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: isLandscape ? 16 : 18,
@@ -444,10 +521,9 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
       case 'CAPS':
         isSpecial = true;
         isActive = _keyboardController.isCapsLock;
-        isSubActive = _keyboardController.isCapsExtended;
         width = 76;
         onTap = () {
-          _runWithKeyFlash(layoutCell, _keyboardController.toggleCapsLock);
+          _runWithKeyFlash(layoutCell, _keyboardController.onCapsKeyPressed);
         };
         break;
       case 'BACKSPACE':
@@ -467,7 +543,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
             () {
               final success = _keyboardController.enter();
               if (!success) {
-                _schedulePreviewCaretRefocus();
+                _retainPreviewFocus();
                 return;
               }
 
@@ -551,7 +627,6 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         onAlternateSelected: onAlternate,
         theme: theme,
         primaryIsTop: _keyboardController.useTopCharacterOnDualKey,
-        boostPrimary: _keyboardController.isCapsExtended,
         isFlashHighlight: flashKeyId == layoutCell,
       );
     } else {
@@ -578,19 +653,5 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     } else {
       return SizedBox(width: width, child: keyWidget);
     }
-  }
-}
-
-/// Drops edits coming from the IME / soft keyboard so only the on-screen keys
-/// change the field, while the [TextField] stays editable for a visible caret.
-class _SoftKeyboardBlockFormatter extends TextInputFormatter {
-  const _SoftKeyboardBlockFormatter();
-
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    return oldValue;
   }
 }
