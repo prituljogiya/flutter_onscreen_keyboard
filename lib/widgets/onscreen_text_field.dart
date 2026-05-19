@@ -68,17 +68,20 @@ class OnscreenTextField extends StatelessWidget {
       );
     }
 
-    return TextField(
-      key: fieldKey,
-      controller: controller,
-      focusNode: focusNode,
-      keyboardType: keyboardType,
-      readOnly: true,
-      showCursor: showCursor,
-      maxLines: maxLines,
-      maxLength: maxLength,
-      onTap: () => OnscreenKeyboardHost.activate(context, _session),
-      decoration: decoration,
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => OnscreenKeyboardHost.activate(context, _session),
+      child: TextField(
+        key: fieldKey,
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: keyboardType,
+        readOnly: true,
+        showCursor: showCursor,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        decoration: decoration,
+      ),
     );
   }
 }

@@ -7,6 +7,7 @@ import 'package:flutter_onscreen_keyboard/widgets/keyboardkey.dart';
 import 'package:get/get.dart';
 import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
+import '../core/onscreen_keyboard_validation.dart';
 import '../core/theme_controller.dart';
 import 'duelKey.dart';
 
@@ -75,12 +76,11 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   }
 
   void _onHostFieldFocusChanged() {
-    if (!widget.focusNode.hasFocus) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _ensurePreviewSelectionAtEnd();
+    if (!widget.focusNode.hasFocus || !mounted) return;
+    _ensurePreviewSelectionAtEnd();
+    if (_previewFocusNode.canRequestFocus) {
       _previewFocusNode.requestFocus();
-    });
+    }
   }
 
   void _retainPreviewFocus() {
@@ -123,12 +123,9 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         : widget.controller;
     _ensurePreviewSelectionAtEnd();
     _initController();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (widget.focusNode.hasFocus) {
-        _onHostFieldFocusChanged();
-      }
-    });
+    if (widget.focusNode.hasFocus) {
+      _onHostFieldFocusChanged();
+    }
   }
 
   void _initController() {
@@ -162,6 +159,12 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     if (widget.focusNode != oldWidget.focusNode) {
       oldWidget.focusNode.removeListener(_onHostFieldFocusChanged);
       widget.focusNode.addListener(_onHostFieldFocusChanged);
+      releaseOnscreenKeyboardControllers(oldWidget.focusNode);
+      _initController();
+      _keyboardController.clearValidation();
+      if (widget.focusNode.hasFocus) {
+        _onHostFieldFocusChanged();
+      }
     }
     if (widget.controller != oldWidget.controller && widget.commitOnEnterOnly) {
       _inputController.text = widget.controller.text;

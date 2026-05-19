@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
 import '../core/numeric_range.dart';
+import '../core/onscreen_keyboard_validation.dart';
 import '../core/numericKeyController.dart';
 import '../core/theme_controller.dart';
 import 'numerickeyboardkey.dart';
@@ -114,8 +115,12 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   void didUpdateWidget(covariant NumericKeyboard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.focusNode != oldWidget.focusNode) {
+      releaseOnscreenKeyboardControllers(oldWidget.focusNode);
       _initController();
       _keyboardController.clearValidation();
+      if (widget.commitOnEnterOnly) {
+        _reseedStagingFromCommitted();
+      }
     }
     if (widget.controller != oldWidget.controller && widget.commitOnEnterOnly) {
       _keyboardController.clearValidation();
@@ -245,39 +250,10 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                 ),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-              ),
-              child: Text(
-                _keyboardController.validationError ?? "",
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-              Padding(
-                padding: const EdgeInsets.only(left: 12, right: 8),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                      _boundField(
-                        theme,
-                        'Min Value',
-                        '${widget.minValue  ?? ""}',
-                      ),
-                      _boundField(
-                        theme,
-                        'Max Value',
-                        '${widget.maxValue ?? ""}',
-                      ),
-                  ],
-                ),
-              ),
-            Expanded(
+            if (errorText != null) _buildErrorRow(errorText),
+            if (showBounds) _buildBoundsRow(theme),
+            SizedBox(
+              height: keysHeight,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
                 child: Row(
