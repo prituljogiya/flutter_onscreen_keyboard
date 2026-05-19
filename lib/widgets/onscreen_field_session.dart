@@ -20,8 +20,8 @@ class OnscreenFieldSession {
   final TextInputType keyboardType;
   final int? minLength;
   final int? maxLength;
-  final int? minValue;
-  final int? maxValue;
+  final num? minValue;
+  final num? maxValue;
   final String? Function(String)? validator;
 
   bool get useNumericKeyboard => preferOnscreenNumericKeyboard(keyboardType);

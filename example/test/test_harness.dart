@@ -95,6 +95,13 @@ Future<void> typeDigits(WidgetTester tester, String digits) async {
   }
 }
 
+/// Types a numeric string on the on-screen pad (digits and `.`).
+Future<void> typeNumber(WidgetTester tester, String value) async {
+  for (final ch in value.split('')) {
+    await tapKeyLabel(tester, ch);
+  }
+}
+
 Future<void> tapEnter(WidgetTester tester) async {
   await tapKeyLabel(tester, 'Enter');
   await tester.pumpAndSettle();

@@ -33,8 +33,8 @@ class OnscreenTextField extends StatelessWidget {
   final InputDecoration? decoration;
   final int? minLength;
   final int? maxLength;
-  final int? minValue;
-  final int? maxValue;
+  final num? minValue;
+  final num? maxValue;
   final String? Function(String)? validator;
   final int? maxLines;
   final bool showCursor;

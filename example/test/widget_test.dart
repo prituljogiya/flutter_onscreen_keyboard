@@ -16,20 +16,41 @@ void main() {
       expect(find.text('On-screen Keyboard Demo'), findsOneWidget);
       expect(find.text('Showcase'), findsOneWidget);
       expect(find.text('Custom keyboard'), findsOneWidget);
-      expect(find.text('Numeric keyboard'), findsOneWidget);
+      expect(find.text('Numeric — integers & range'), findsOneWidget);
+      expect(find.text('Numeric — decimals & range'), findsOneWidget);
+      expect(find.text('Rating (3.1 – 5.5)'), findsOneWidget);
       expect(find.byKey(const ValueKey<String>('field_name')), findsOneWidget);
       expect(find.byKey(const ValueKey<String>('field_email')), findsOneWidget);
       expect(find.byKey(const ValueKey<String>('field_memo')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('field_username')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey<String>('field_age')), findsOneWidget);
       expect(
         find.byKey(const ValueKey<String>('field_quantity')),
         findsOneWidget,
       );
+      expect(
+        find.byKey(const ValueKey<String>('field_percent')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey<String>('field_pin')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('field_even')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('field_rating')),
+        findsOneWidget,
+      );
       expect(
         find.byKey(const ValueKey<String>('field_amount')),
         findsOneWidget,
       );
+      expect(
+        find.byKey(const ValueKey<String>('field_weight')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey<String>('field_phone')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('field_zip')), findsOneWidget);
     });
   });
 
