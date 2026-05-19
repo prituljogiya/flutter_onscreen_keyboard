@@ -7,7 +7,9 @@ abstract final class KeyboardChromeLayout {
   /// Preview row: 50px field + margins (10 top, 3 bottom).
   static const double numericPreviewChrome = 63;
   static const double errorChrome = 20;
-  static const double boundsChrome = 20;
+  static const double boundsChrome = 24;
+  /// Top + bottom padding around the digit grid in [NumericKeyboard].
+  static const double numericKeysVerticalPadding = 14;
 
   static double numericKeysFraction(bool isLandscape) =>
       isLandscape ? 0.30 : 0.28;
@@ -29,7 +31,8 @@ abstract final class KeyboardChromeLayout {
 
     final keysH =
         MediaQuery.sizeOf(context).height * numericKeysFraction(isLandscape);
-    var total = numericPreviewChrome + keysH;
+    var total =
+        numericPreviewChrome + keysH + numericKeysVerticalPadding;
     if (showError) total += errorChrome;
     if (showBounds) total += boundsChrome;
     return total;

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
+import '../core/numeric_range.dart';
 import '../core/numericKeyController.dart';
 import '../core/theme_controller.dart';
 import 'numerickeyboardkey.dart';
@@ -17,10 +18,10 @@ class NumericKeyboard extends StatefulWidget {
   final bool commitOnEnterOnly;
   final double? height;
 
-  /// Inclusive bounds for whole-number input. Shown on the keyboard and enforced
+  /// Inclusive bounds (integers or decimals). Shown on the keyboard and enforced
   /// before [validator] runs (range first, then custom [validator]).
-  final int? minValue;
-  final int? maxValue;
+  final num? minValue;
+  final num? maxValue;
 
   /// Called when the user dismisses the keyboard without committing: after the
   /// **close** (X) runs [NumericKeyboardController.closeKeyboard]. To dismiss
@@ -102,18 +103,11 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   }
 
   String? _rangeValidate(String value) {
-    if (widget.minValue == null && widget.maxValue == null) return null;
-    final n = int.tryParse(value);
-    if (n == null) {
-      return 'Enter a number';
-    }
-    if (widget.minValue != null && n < widget.minValue!) {
-      return 'Must be >= ${widget.minValue}';
-    }
-    if (widget.maxValue != null && n > widget.maxValue!) {
-      return 'Must be <= ${widget.maxValue}';
-    }
-    return null;
+    return NumericRange.validate(
+      value,
+      min: widget.minValue,
+      max: widget.maxValue,
+    );
   }
 
   @override
@@ -380,7 +374,48 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     });
   }
 
+  Widget _buildErrorRow(String message) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 2),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          message,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.redAccent,
+            fontSize: 12,
+            height: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildBoundsRow(KeyboardTheme theme) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2, 8, 4),
+      child: Row(
+        children: [
+          if (widget.minValue != null)
+            _boundField(
+              theme,
+              'Min Value',
+              NumericRange.formatBound(widget.minValue!),
+            ),
+          if (widget.minValue != null && widget.maxValue != null)
+            const SizedBox(width: 16),
+          if (widget.maxValue != null)
+            _boundField(
+              theme,
+              'Max Value',
+              NumericRange.formatBound(widget.maxValue!),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _boundField(KeyboardTheme theme, String label, String value) {
     return Row(

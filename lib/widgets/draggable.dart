@@ -22,8 +22,8 @@ class DraggableDynamicKeyboard extends StatefulWidget {
   final bool fullWidthInLandscape;
   final bool alwaysVisible;
   final bool useNumericKeyboard;
-  final int? numericMinValue;
-  final int? numericMaxValue;
+  final num? numericMinValue;
+  final num? numericMaxValue;
 
   /// Passed to [CustomKeyboard] when [useNumericKeyboard] is false.
   final int? maxLength;
