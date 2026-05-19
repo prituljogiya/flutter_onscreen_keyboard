@@ -44,31 +44,48 @@ void main() {
       c.onClose();
     });
 
-    test('minLength blocks enter until satisfied', () {
+    test('minLength validates on Enter only', () {
       final text = TextEditingController();
       final c = newController(text: text, minLength: 3);
       c.insertText('ab');
-      c.validateNow();
-      expect(c.validationError, 'At least 3 characters');
-      expect(c.enter(), isFalse);
+      expect(c.shouldShowValidationError, isFalse);
 
+      expect(c.enter(), isFalse);
+      expect(c.shouldShowValidationError, isTrue);
+      expect(c.validationError, 'At least 3 characters');
+
+      c.clearValidation();
       c.insertText('c');
-      expect(c.validationError, isNull);
       expect(c.enter(), isTrue);
       c.onClose();
     });
   });
 
   group('Caps / shift', () {
+    test('single caps highlights caps mode not shift', () {
+      final c = newController();
+      c.onCapsKeyPressed();
+      expect(c.isCapsOneShot, isTrue);
+      expect(c.isShiftActive, isFalse);
+      expect(c.isCapsLock, isFalse);
+      expect(c.isUppercase, isTrue);
+
+      c.toggleShift();
+      expect(c.isShiftActive, isTrue);
+      expect(c.isCapsOneShot, isFalse);
+      c.onClose();
+    });
+
     test('double tap caps enables caps lock', () {
       final c = newController();
       c.onCapsKeyPressed();
-      expect(c.isShiftActive, isTrue);
-      expect(c.isCapsLock, isFalse);
+      expect(c.isShiftActive, isFalse);
+      expect(c.isCapsOneShot, isTrue);
 
       c.onCapsKeyPressed();
       expect(c.isCapsLock, isTrue);
       expect(c.isShiftActive, isFalse);
+      expect(c.isCapsOneShot, isFalse);
       expect(c.isUppercase, isTrue);
 
       c.onCapsKeyPressed();

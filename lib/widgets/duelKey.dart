@@ -188,22 +188,24 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
           height: widget.height ?? 48,
           margin: EdgeInsets.all(widget.theme.keySpacing / 2),
           decoration: BoxDecoration(
-            gradient: _isPressed
+            gradient: _isPressed || widget.isFlashHighlight
                 ? LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      widget.theme.activeKeyColor,
-                      widget.theme.activeKeyColor,
+                      widget.theme.keyPressedColor,
+                      widget.theme.keyPressedColor,
                     ],
                   )
                 : widget.theme.primaryGradient,
             borderRadius: BorderRadius.circular(widget.theme.borderRadius),
             border: Border.all(
-              color: widget.isFlashHighlight
-                  ? widget.theme.activeKeyColor
+              color: widget.isFlashHighlight || _isPressed
+                  ? widget.theme.keyPressedColor
                   : widget.theme.keyBorderColor,
-              width: widget.isFlashHighlight ? 2.2 : widget.theme.keyBorderWidth,
+              width: widget.isFlashHighlight || _isPressed
+                  ? 2.2
+                  : widget.theme.keyBorderWidth,
             ),
             boxShadow: _isPressed
                 ? [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/onscreen_keyboard_config.dart';
+import '../core/onscreen_keyboard_validation.dart';
 import 'custom_keyboard.dart';
 import 'draggable.dart';
 import 'numeric.dart';
@@ -49,12 +50,22 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       session.focusNode.requestFocus();
       return;
     }
+    final previous = _session;
+    if (previous != null &&
+        previous.focusNode.hashCode != session.focusNode.hashCode) {
+      clearOnscreenKeyboardValidation(previous.focusNode);
+    }
     setState(() => _session = session);
+    clearOnscreenKeyboardValidation(session.focusNode);
     session.focusNode.requestFocus();
   }
 
   void _dismiss() {
     if (!mounted) return;
+    final previous = _session;
+    if (previous != null) {
+      clearOnscreenKeyboardValidation(previous.focusNode);
+    }
     setState(() => _session = null);
     widget.onTapOutside?.call();
   }
@@ -111,6 +122,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
           Expanded(child: widget.child),
           if (useNumeric)
             NumericKeyboard(
+              key: ValueKey<int>(session.focusNode.hashCode),
               controller: session.controller,
               focusNode: session.focusNode,
               commitOnEnterOnly: widget.commitOnEnterOnly,

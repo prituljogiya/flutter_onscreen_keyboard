@@ -65,7 +65,7 @@ class _NumericKeyState extends State<NumericKey>
     final t = widget.theme;
     final decoration = widget.isSpecial
         ? BoxDecoration(
-            color: _isPressed ? t.activeKeyColor : t.specialKeyColor,
+            color: _isPressed ? t.keyPressedColor : t.specialKeyColor,
             borderRadius: BorderRadius.circular(t.borderRadius),
             border: Border.all(
               color: t.keyBorderColor,
@@ -92,7 +92,7 @@ class _NumericKeyState extends State<NumericKey>
                 ? LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [t.activeKeyColor, t.activeKeyColor],
+                    colors: [t.keyPressedColor, t.keyPressedColor],
                   )
                 : t.primaryGradient,
             borderRadius: BorderRadius.circular(t.borderRadius),

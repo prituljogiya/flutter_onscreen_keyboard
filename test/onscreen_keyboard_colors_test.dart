@@ -22,6 +22,8 @@ void main() {
       expect(theme.specialKeyColor, colors.specialKeyBackground);
       expect(theme.specialKeyTextColor, colors.specialKeyText);
       expect(theme.activeKeyColor, colors.activeKey);
+      expect(theme.keyPressedColor, colors.activeKey);
+      expect(theme.activeKeyTextColor, Colors.white);
     });
 
     test('KeyboardTheme.fromColors matches toTheme', () {

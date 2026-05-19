@@ -320,7 +320,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
 
           _cachePanBounds();
 
-          final keyboardWidth = widget.useNumericKeyboard ? 207.0 : 761.0;
+          final keyboardWidth = widget.useNumericKeyboard ? 220.0 : 761.0;
 
           final keyboardHeight = widget.useNumericKeyboard ? 366.0 : 327.0;
 

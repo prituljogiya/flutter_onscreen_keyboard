@@ -22,6 +22,8 @@ class KeyboardController extends GetxController {
 
   final RxBool _isShiftActive = false.obs;
   final RxBool _isCapsLock = false.obs;
+  /// Single Caps tap: uppercase without highlighting Shift.
+  final RxBool _capsOneShot = false.obs;
   final RxBool _isNumericMode = false.obs;
 
   static const Duration _capsDoubleTapWindow = Duration(milliseconds: 400);
@@ -29,6 +31,7 @@ class KeyboardController extends GetxController {
   final RxBool _isSymbolsMode = false.obs;
   final RxBool _isEmojiMode = false.obs;
   final RxnString _validationError = RxnString();
+  final RxBool _showValidationError = false.obs;
   final RxnString _flashKeyId = RxnString();
 
   Timer? _flashTimer;
@@ -40,18 +43,31 @@ class KeyboardController extends GetxController {
 
   bool get isShiftActive => _isShiftActive.value;
   bool get isCapsLock => _isCapsLock.value;
+  bool get isCapsOneShot => _capsOneShot.value;
   bool get isNumericMode => _isNumericMode.value;
 
   /// For [Obx] / [GetBuilder] so modifier keys repaint when shift/caps changes.
   RxBool get isShiftActiveRx => _isShiftActive;
   RxBool get isCapsLockRx => _isCapsLock;
+  RxBool get capsOneShotRx => _capsOneShot;
 
   /// Letter keys use uppercase layout when true (standard shift / caps-lock rules).
-  bool get isUppercase =>
-      _isCapsLock.value ? !_isShiftActive.value : _isShiftActive.value;
+  bool get isUppercase {
+    if (_isCapsLock.value) {
+      return !_isShiftActive.value;
+    }
+    return _isShiftActive.value || _capsOneShot.value;
+  }
   bool get isSymbolsMode => _isSymbolsMode.value;
   bool get isEmojiMode => _isEmojiMode.value;
   String? get validationError => _validationError.value;
+
+  /// True only after Enter failed (not while typing).
+  bool get shouldShowValidationError =>
+      _showValidationError.value && _validationError.value != null;
+
+  RxBool get showValidationErrorRx => _showValidationError;
+
   String? get flashKeyId => _flashKeyId.value;
 
   RxnString get flashKeyRx => _flashKeyId;
@@ -90,6 +106,7 @@ class KeyboardController extends GetxController {
     this.maxLength = maxLength;
     this.minLength = minLength;
     _active = true;
+    clearValidation();
   }
 
   @override
@@ -111,8 +128,9 @@ class KeyboardController extends GetxController {
   }
 
   /// Number-row dual keys (e.g. `1|!`): symbols on top, digits on bottom.
-  /// Top symbol is used only while [isShiftActive] (same as a default keyboard).
-  bool get useTopCharacterOnDualKey => _isShiftActive.value;
+  /// Top symbol on dual keys when Shift or single-tap Caps is active.
+  bool get useTopCharacterOnDualKey =>
+      _isShiftActive.value || _capsOneShot.value;
 
   void moveCursor(int delta) {
     if (!_canEdit) return;
@@ -153,6 +171,9 @@ class KeyboardController extends GetxController {
 
     if (_isShiftActive.value) {
       _isShiftActive.value = false;
+    }
+    if (_capsOneShot.value) {
+      _capsOneShot.value = false;
     }
   }
 
@@ -197,15 +218,17 @@ class KeyboardController extends GetxController {
       selection: TextSelection.collapsed(offset: offset),
       composing: TextRange.empty,
     );
-    _validate();
   }
 
   bool enter() {
     if (!_canEdit) return false;
-    _validate();
-    if (_validationError.value != null) {
+    final error = _computeEnterError();
+    if (error != null) {
+      _validationError.value = error;
+      _showValidationError.value = true;
       return false;
     }
+    clearValidation();
 
     onEnterPressed?.call();
     previewFocusNode?.unfocus();
@@ -226,18 +249,20 @@ class KeyboardController extends GetxController {
 
   void toggleShift() {
     _lastCapsTap = null;
+    _capsOneShot.value = false;
     _isShiftActive.value = !_isShiftActive.value;
   }
 
-  /// Caps: single tap toggles shift (one capital / symbol row like Shift).
+  /// Caps: single tap toggles one-shot caps (Caps key lit, Shift not lit).
   /// Double tap within [_capsDoubleTapWindow] turns caps lock on.
-  /// Tap again while locked turns caps lock off and returns to lowercase.
+  /// Tap again while locked turns caps lock off.
   void onCapsKeyPressed() {
     final now = DateTime.now();
 
     if (_isCapsLock.value) {
       _isCapsLock.value = false;
       _isShiftActive.value = false;
+      _capsOneShot.value = false;
       _lastCapsTap = null;
       return;
     }
@@ -246,12 +271,14 @@ class KeyboardController extends GetxController {
         now.difference(_lastCapsTap!) <= _capsDoubleTapWindow) {
       _lastCapsTap = null;
       _isShiftActive.value = false;
+      _capsOneShot.value = false;
       _isCapsLock.value = true;
       return;
     }
 
     _lastCapsTap = now;
-    _isShiftActive.value = !_isShiftActive.value;
+    _isShiftActive.value = false;
+    _capsOneShot.value = !_capsOneShot.value;
   }
 
   void toggleNumeric() {
@@ -273,29 +300,29 @@ class KeyboardController extends GetxController {
   void clear() {
     if (!_canEdit) return;
     textController.clear();
+    clearValidation();
+  }
+
+  void clearValidation() {
     _validationError.value = null;
+    _showValidationError.value = false;
   }
 
-  /// Re-runs validation (e.g. when [minLength] / rules change on the widget).
-  void validateNow() => _validate();
+  void validateNow() => clearValidation();
 
-  void _validate() {
-    if (!_canEdit) return;
+  String? _computeEnterError() {
+    if (!_canEdit) return null;
     final value = textController.text;
-    String? error;
-
     if (minLength != null && value.length < minLength!) {
-      error = 'At least $minLength characters';
+      return 'At least $minLength characters';
     }
-
-    if (error == null && validator != null) {
-      error = validator!(value);
+    if (validator != null) {
+      return validator!(value);
     }
-
-    _validationError.value = error;
+    return null;
   }
 
-  void _onTextChanged() => _validate();
+  void _onTextChanged() {}
 
   List<List<String>> get currentLayout {
     return isUppercase

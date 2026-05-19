@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' hide KeyboardKey;
 import 'package:flutter_onscreen_keyboard/core/keyboard_controller.dart';
 import 'package:flutter_onscreen_keyboard/widgets/keyboardkey.dart';
 import 'package:get/get.dart';
+import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
 import '../core/theme_controller.dart';
 import 'duelKey.dart';
@@ -152,7 +153,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
       );
       Get.put(_keyboardController, tag: tag);
     }
-    _keyboardController.validateNow();
+    _keyboardController.clearValidation();
   }
 
   @override
@@ -175,7 +176,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         widget.maxLength != oldWidget.maxLength ||
         widget.validator != oldWidget.validator) {
       _keyboardController.minLength = widget.minLength;
-      _keyboardController.validateNow();
+      _keyboardController.clearValidation();
     }
   }
 
@@ -218,74 +219,64 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   }
 
   Widget _buildKeyboardShell(BuildContext context, KeyboardTheme theme) {
-    final media = MediaQuery.of(context);
-    final screenSize = media.size;
-    final isLandscape = media.orientation == Orientation.landscape;
-    final keyboardHeight =
-        widget.height ?? screenSize.height * (isLandscape ? 0.58 : 0.45);
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     final caretColor = theme.specialKeyTextColor;
+    final hasBounds =
+        widget.minLength != null || widget.maxLength != null;
 
-    return Container(
-      height: keyboardHeight,
-      decoration: BoxDecoration(
-        color: theme.backgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildPreviewStrip(
-            isLandscape: isLandscape,
-            caretColor: caretColor,
-          ),
-          Obx(() {
-            final err = _keyboardController.validationError;
-            if (err == null) {
-              return const SizedBox.shrink();
-            }
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  err,
-                  style: const TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 12,
+    return Obx(() {
+      _keyboardController.showValidationErrorRx.value;
+      final err = _keyboardController.shouldShowValidationError
+          ? _keyboardController.validationError
+          : null;
+      final errorText = err != null && err.trim().isNotEmpty ? err.trim() : null;
+      final showError = errorText != null;
+      final showBounds = hasBounds;
+      final panelHeight = KeyboardChromeLayout.customPanelHeight(
+        context: context,
+        isLandscape: isLandscape,
+        showError: showError,
+        showBounds: showBounds,
+        overrideHeight: widget.height,
+      );
+
+      return Container(
+        height: panelHeight,
+        decoration: BoxDecoration(
+          color: theme.backgroundColor,
+          boxShadow: [
+            BoxShadow(
+              color: theme.shadowColor.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            _buildPreviewStrip(
+              isLandscape: isLandscape,
+              caretColor: caretColor,
+            ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 2, 10, 2),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    errorText ??  "",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 12,
+                      height: 1.2,
+                    ),
                   ),
                 ),
               ),
-            );
-          }),
-          if (widget.minLength != null || widget.maxLength != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 10, right: 8, bottom: 4),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  if (widget.minLength != null)
-                    _lengthBoundField(
-                      theme,
-                      'Min Length',
-                      '${widget.minLength}',
-                    ),
-                  if (widget.maxLength != null)
-                    _lengthBoundField(
-                      theme,
-                      'Max Length',
-                      '${widget.maxLength}',
-                    ),
-                ],
-              ),
-            ),
-          Expanded(
-            child: Listener(
+            Expanded(
+              child: Listener(
               behavior: HitTestBehavior.translucent,
               onPointerDown: (_) => _retainPreviewFocus(),
               child: Obx(() {
@@ -294,6 +285,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
               // Repaint Shift/Caps when modifiers change (not only on layout swap).
               _keyboardController.isShiftActiveRx.value;
               _keyboardController.isCapsLockRx.value;
+              _keyboardController.capsOneShotRx.value;
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final horizontalPadding = isLandscape ? 3.0 : 4.0;
@@ -332,7 +324,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
           ),
         ],
       ),
-    );
+      );
+    });
   }
 
   Widget _lengthBoundField(KeyboardTheme theme, String label, String value) {
@@ -519,7 +512,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         break;
       case 'CAPS':
         isSpecial = true;
-        isActive = _keyboardController.isCapsLock;
+        isActive =
+            _keyboardController.isCapsLock || _keyboardController.isCapsOneShot;
         width = 76;
         onTap = () {
           _runWithKeyFlash(layoutCell, _keyboardController.onCapsKeyPressed);

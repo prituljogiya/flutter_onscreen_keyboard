@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
 import '../core/numericKeyController.dart';
 import '../core/theme_controller.dart';
@@ -118,7 +119,12 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   @override
   void didUpdateWidget(covariant NumericKeyboard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.focusNode != oldWidget.focusNode) {
+      _initController();
+      _keyboardController.clearValidation();
+    }
     if (widget.controller != oldWidget.controller && widget.commitOnEnterOnly) {
+      _keyboardController.clearValidation();
       _inputController.text = _seedText(widget.controller.text);
     }
     if (widget.minValue != oldWidget.minValue ||
@@ -160,17 +166,34 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   }
 
   Widget _buildWithTheme(BuildContext context, KeyboardTheme theme) {
-    final media = MediaQuery.of(context);
-    final isLandscape = media.orientation == Orientation.landscape;
-    final resolvedHeight =
-        widget.height ?? media.size.height * (isLandscape ? 0.42 : 0.38);
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final hasBounds = widget.minValue != null || widget.maxValue != null;
 
     return Obx(() {
+      final error = _keyboardController.validationErrorRx.value;
+      final errorText = error != null && error.trim().isNotEmpty
+          ? error.trim()
+          : null;
+      final showError = errorText != null;
+      final showBounds = hasBounds;
+
+      final keysHeight = MediaQuery.sizeOf(context).height *
+          KeyboardChromeLayout.numericKeysFraction(isLandscape);
+      final panelHeight = KeyboardChromeLayout.numericPanelHeight(
+        context: context,
+        isLandscape: isLandscape,
+        showError: showError,
+        showBounds: showBounds,
+        overrideHeight: widget.height,
+      );
+
       return Container(
-        height: resolvedHeight,
+        height: panelHeight,
         decoration: BoxDecoration(color: theme.backgroundColor),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
           children: [
             Row(
               children: [
@@ -240,7 +263,6 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                 ),
               ),
             ),
-            if (widget.minValue != null || widget.maxValue != null)
               Padding(
                 padding: const EdgeInsets.only(left: 12, right: 8),
                 child: Wrap(
@@ -248,17 +270,15 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                   runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    if (widget.minValue != null)
                       _boundField(
                         theme,
                         'Min Value',
-                        '${widget.minValue}',
+                        '${widget.minValue  ?? ""}',
                       ),
-                    if (widget.maxValue != null)
                       _boundField(
                         theme,
                         'Max Value',
-                        '${widget.maxValue}',
+                        '${widget.maxValue ?? ""}',
                       ),
                   ],
                 ),
@@ -360,8 +380,11 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     });
   }
 
+
+
   Widget _boundField(KeyboardTheme theme, String label, String value) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,

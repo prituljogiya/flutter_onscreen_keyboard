@@ -176,12 +176,14 @@ class _KeyboardKeyState extends State<KeyboardKey>
     Color textColor;
     Gradient? gradient;
 
-    if (widget.isFlashHighlight) {
-      bgColor = widget.theme.activeKeyColor.withOpacity(0.92);
-      textColor = widget.theme.specialKeyTextColor;
+    if (widget.isFlashHighlight || _isPressed) {
+      bgColor = widget.theme.keyPressedColor;
+      textColor = widget.theme.activeKeyTextColor;
+      gradient = null;
     } else if (widget.isActive) {
       bgColor = widget.theme.activeKeyColor;
-      textColor = widget.theme.specialKeyTextColor;
+      textColor = widget.theme.activeKeyTextColor;
+      gradient = null;
     } else if (isSpecial) {
       bgColor = widget.theme.specialKeyColor;
       textColor = widget.theme.specialKeyTextColor;
@@ -280,16 +282,17 @@ class _KeyboardKeyState extends State<KeyboardKey>
             color: gradient == null ? bgColor : null,
             borderRadius: BorderRadius.circular(widget.theme.borderRadius),
             border: Border.all(
-              color: widget.isFlashHighlight
-                  ? const Color(0xFF00E5D4)
-                  : widget.isActive && widget.isSpecial
-                      ? widget.theme.specialKeyTextColor
+              color: widget.isFlashHighlight || _isPressed
+                  ? widget.theme.keyPressedColor
+                  : widget.isActive
+                      ? widget.theme.activeKeyColor
                       : widget.isSubActive
                           ? const Color(0xFFFFB74D)
                           : widget.theme.keyBorderColor,
               width: (widget.isFlashHighlight ||
+                      _isPressed ||
                       widget.isSubActive ||
-                      (widget.isActive && widget.isSpecial))
+                      widget.isActive)
                   ? 2.2
                   : widget.theme.keyBorderWidth,
             ),

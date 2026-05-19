@@ -34,8 +34,9 @@ void main() {
       await pumpKeyboardDemo(tester);
       await tapField(tester, 'field_name');
       await typeAlpha(tester, 'ab');
-      await tapEnter(tester);
+      expect(find.text('At least 3 characters'), findsNothing);
 
+      await tapEnter(tester);
       expect(find.text('At least 3 characters'), findsOneWidget);
       expect(fieldText(tester, 'field_name'), isEmpty);
     });
@@ -104,6 +105,25 @@ void main() {
       await tapEnter(tester);
 
       expect(fieldText(tester, 'field_quantity'), '10');
+    });
+
+    testWidgets('Quantity error clears when switching fields', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_quantity');
+      await typeDigits(tester, '201');
+      expect(find.text('Must be <= 200'), findsOneWidget);
+
+      await tapField(tester, 'field_age');
+      expect(find.text('Must be <= 200'), findsNothing);
+    });
+
+    testWidgets('Age shows no error until user types', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_age');
+      expect(find.textContaining('Must be >='), findsNothing);
+      expect(find.textContaining('Must be <='), findsNothing);
     });
 
     testWidgets('Access code validates 4 digits on Enter', (tester) async {

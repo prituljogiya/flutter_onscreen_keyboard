@@ -32,6 +32,8 @@ class OnscreenKeyboardColors {
     required this.specialKeyBackground,
     required this.specialKeyText,
     required this.activeKey,
+    this.keyPressed,
+    this.activeKeyText,
     this.keyBorder,
     this.shadow,
     this.gradientTop,
@@ -58,8 +60,14 @@ class OnscreenKeyboardColors {
   /// Labels on special keys and preview caret.
   final Color specialKeyText;
 
-  /// Shift / Caps active, key flash highlight base.
+  /// Shift / Caps lock active background.
   final Color activeKey;
+
+  /// Background while a key is held down. Defaults to [activeKey] if omitted.
+  final Color? keyPressed;
+
+  /// Text and icons on pressed / active keys. Defaults to white if omitted.
+  final Color? activeKeyText;
 
   /// Key outline. Defaults to [keyText] at 30% opacity if omitted.
   final Color? keyBorder;

@@ -10,8 +10,12 @@ class NumericKeyboardController extends GetxController {
 
   final RxnString _validationError = RxnString();
   bool _active = true;
+  bool _hasUserEdited = false;
 
   String? get validationError => _validationError.value;
+
+  RxnString get validationErrorRx => _validationError;
+
   String get text => textController.text;
   bool get isActive => _active;
 
@@ -19,32 +23,21 @@ class NumericKeyboardController extends GetxController {
     required this.textController,
     required this.focusNode,
     this.validator,
-  }) {
-    textController.addListener(_onTextChanged);
-  }
+  });
 
-  /// Called when [NumericKeyboard] is rebuilt with a new staging controller.
   void rebind({
     required TextEditingController textController,
     String? Function(String)? validator,
   }) {
-    if (!identical(this.textController, textController)) {
-      if (isTextEditingControllerUsable(this.textController)) {
-        this.textController.removeListener(_onTextChanged);
-      }
-      this.textController = textController;
-      textController.addListener(_onTextChanged);
-    }
+    this.textController = textController;
     this.validator = validator;
     _active = true;
+    clearValidation();
   }
 
   @override
   void onClose() {
     _active = false;
-    if (isTextEditingControllerUsable(textController)) {
-      textController.removeListener(_onTextChanged);
-    }
     super.onClose();
   }
 
@@ -53,6 +46,7 @@ class NumericKeyboardController extends GetxController {
 
   void insertDigit(String digit) {
     if (!_canEdit) return;
+    _hasUserEdited = true;
 
     final currentText = textController.text;
 
@@ -67,6 +61,7 @@ class NumericKeyboardController extends GetxController {
 
   void insertDecimal() {
     if (!_canEdit) return;
+    _hasUserEdited = true;
 
     final currentText = textController.text;
 
@@ -79,6 +74,7 @@ class NumericKeyboardController extends GetxController {
 
   void backspace() {
     if (!_canEdit) return;
+    _hasUserEdited = true;
 
     final currentText = textController.text;
 
@@ -91,19 +87,17 @@ class NumericKeyboardController extends GetxController {
     _validate();
   }
 
-  /// Returns true when value is valid; caller should commit / close UI.
   bool enter() {
     if (!_canEdit) return false;
-    _validate();
-    if (_validationError.value != null) {
+    _validate(force: true);
+    final message = _validationError.value?.trim();
+    if (message != null && message.isNotEmpty) {
       return false;
     }
     focusNode.unfocus();
     return true;
   }
 
-  /// Dismisses the keyboard only: unfocuses the field. Does not clear text or
-  /// validation.
   bool closeKeyboard() {
     focusNode.unfocus();
     return true;
@@ -112,24 +106,30 @@ class NumericKeyboardController extends GetxController {
   void clear() {
     if (!_canEdit) return;
     textController.text = '0';
-    _validationError.value = null;
+    clearValidation();
   }
 
   void cancel() {
     if (!_canEdit) return;
     textController.text = '0';
+    clearValidation();
+  }
+
+  void clearValidation() {
     _validationError.value = null;
+    _hasUserEdited = false;
   }
 
-  void _validate() {
+  void _validate({bool force = false}) {
     if (!_canEdit) return;
-    if (validator != null) {
-      _validationError.value = validator!(textController.text);
+    if (!force && !_hasUserEdited) {
+      return;
     }
+    final message = validator?.call(textController.text);
+    final trimmed = message?.trim();
+    _validationError.value =
+        (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
-  void _onTextChanged() => _validate();
-
-  /// Call when external rules (e.g. min/max) change without new text input.
   void validateNow() => _validate();
 }

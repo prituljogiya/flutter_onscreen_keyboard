@@ -115,6 +115,8 @@ class KeyboardTheme {
   final Color specialKeyColor;
   final Color specialKeyTextColor;
   final Color activeKeyColor;
+  final Color keyPressedColor;
+  final Color activeKeyTextColor;
   final Color keyBorderColor;
   final double keyBorderWidth;
   final double borderRadius;
@@ -138,6 +140,8 @@ class KeyboardTheme {
       specialKeyColor: colors.specialKeyBackground,
       specialKeyTextColor: colors.specialKeyText,
       activeKeyColor: colors.activeKey,
+      keyPressedColor: colors.keyPressed ?? colors.activeKey,
+      activeKeyTextColor: colors.activeKeyText ?? Colors.white,
       keyBorderColor: border,
       keyBorderWidth: colors.keyBorderWidth,
       borderRadius: colors.borderRadius,
@@ -160,6 +164,8 @@ class KeyboardTheme {
     required this.specialKeyColor,
     required this.specialKeyTextColor,
     required this.activeKeyColor,
+    required this.keyPressedColor,
+    required this.activeKeyTextColor,
     required this.keyBorderColor,
     required this.keyBorderWidth,
     required this.borderRadius,
@@ -178,7 +184,9 @@ class KeyboardTheme {
       keyTextColor: const Color(0xFFE0D0FF),
       specialKeyColor: const Color(0xFF4A1A6B),
       specialKeyTextColor: const Color(0xFF00E5D4),
-      activeKeyColor: const Color(0xFF4A1A6B),
+      activeKeyColor: const Color(0xFF31AC6F),
+      keyPressedColor: const Color(0xFF31AC6F),
+      activeKeyTextColor: Colors.white,
       keyBorderColor: const Color(0xFF5A3A7A).withOpacity(0.5),
       keyBorderWidth: 1,
       borderRadius: 8,
@@ -210,7 +218,9 @@ class KeyboardTheme {
       keyTextColor: Colors.black87,
       specialKeyColor: const Color(0xFF9C27B0),
       specialKeyTextColor: Colors.white,
-      activeKeyColor: const Color(0xFF00BCD4),
+      activeKeyColor: const Color(0xFF31AC6F),
+      keyPressedColor: const Color(0xFF31AC6F),
+      activeKeyTextColor: Colors.white,
       keyBorderColor: Colors.grey.withOpacity(0.3),
       keyBorderWidth: 1,
       borderRadius: 8,
@@ -236,6 +246,8 @@ class KeyboardTheme {
     Color? specialKeyColor,
     Color? specialKeyTextColor,
     Color? activeKeyColor,
+    Color? keyPressedColor,
+    Color? activeKeyTextColor,
     Color? keyBorderColor,
     double? keyBorderWidth,
     double? borderRadius,
@@ -252,6 +264,8 @@ class KeyboardTheme {
       specialKeyColor: specialKeyColor ?? this.specialKeyColor,
       specialKeyTextColor: specialKeyTextColor ?? this.specialKeyTextColor,
       activeKeyColor: activeKeyColor ?? this.activeKeyColor,
+      keyPressedColor: keyPressedColor ?? this.keyPressedColor,
+      activeKeyTextColor: activeKeyTextColor ?? this.activeKeyTextColor,
       keyBorderColor: keyBorderColor ?? this.keyBorderColor,
       keyBorderWidth: keyBorderWidth ?? this.keyBorderWidth,
       borderRadius: borderRadius ?? this.borderRadius,
