@@ -150,6 +150,49 @@ void main() {
 
       expect(fieldText(tester, 'field_amount'), '50');
     });
+
+    testWidgets('Rating shows decimal bounds on keyboard', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_rating');
+
+      expect(find.text('3.1'), findsOneWidget);
+      expect(find.text('5.5'), findsOneWidget);
+    });
+
+    testWidgets('Rating commits decimal in range on Enter', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_rating');
+      await typeNumber(tester, '4.2');
+      await tapEnter(tester);
+
+      expect(fieldText(tester, 'field_rating'), '4.2');
+    });
+
+    testWidgets('Rating rejects value above max while typing', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_rating');
+      await typeNumber(tester, '6');
+      expect(find.text('Must be <= 5.5'), findsOneWidget);
+    });
+
+    testWidgets('Rating rejects value below min while typing', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_rating');
+      await typeNumber(tester, '2');
+      expect(find.text('Must be >= 3.1'), findsOneWidget);
+    });
+
+    testWidgets('Phone has no min/max row', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_phone');
+      expect(find.text('Min Value'), findsNothing);
+      expect(find.text('Max Value'), findsNothing);
+    });
   });
 
   group('Switching fields', () {
@@ -176,10 +219,17 @@ void main() {
         'field_name',
         'field_email',
         'field_memo',
+        'field_username',
         'field_age',
         'field_quantity',
+        'field_percent',
         'field_pin',
+        'field_even',
+        'field_rating',
         'field_amount',
+        'field_weight',
+        'field_phone',
+        'field_zip',
       ]) {
         expect(readField(tester, key).readOnly, isTrue);
       }
