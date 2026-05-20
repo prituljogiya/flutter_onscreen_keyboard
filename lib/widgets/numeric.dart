@@ -354,7 +354,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                               const ['7', '8', '9'],
                             ),
                           ),
-                          const SizedBox(height: 6),
+                           const SizedBox(height: 6),
                           Expanded(
                             child: _buildDigitRow(
                               theme,
