@@ -83,7 +83,41 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
   OnscreenFieldSession? _session;
   final GlobalKey _alphaKeyboardKey = GlobalKey(debugLabel: 'alphaKeyboard');
 
+  /// Scroll offset of [child] before the keyboard shrinks the viewport (portrait).
+  ScrollPosition? _hostScrollPosition;
+  double? _hostScrollOffsetBeforeKeyboard;
+
   bool isOpenFor(FocusNode focusNode) => _session?.focusNode == focusNode;
+
+  void _captureHostScroll(OnscreenFieldSession session) {
+    final ctx = session.focusNode.context;
+    if (ctx == null) return;
+    final scrollable = Scrollable.maybeOf(ctx);
+    if (scrollable == null) return;
+    _hostScrollPosition = scrollable.position;
+    _hostScrollOffsetBeforeKeyboard = scrollable.position.pixels;
+  }
+
+  void _restoreHostScrollAfterDismiss() {
+    final position = _hostScrollPosition;
+    final offset = _hostScrollOffsetBeforeKeyboard;
+    _hostScrollPosition = null;
+    _hostScrollOffsetBeforeKeyboard = null;
+    if (position == null || offset == null) return;
+
+    void apply() {
+      if (!mounted || !position.hasContentDimensions) return;
+      final target = offset.clamp(0.0, position.maxScrollExtent);
+      if ((position.pixels - target).abs() > 0.5) {
+        position.jumpTo(target);
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      apply();
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    });
+  }
 
   void _activate(OnscreenFieldSession session) {
     if (!useCustomOnscreenKeyboard) {
@@ -98,6 +132,10 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
     }
 
     session.focusNode.requestFocus();
+
+    if (_session == null) {
+      _captureHostScroll(session);
+    }
 
     if (!identical(previous, session)) {
       setState(() => _session = session);
@@ -119,6 +157,8 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
     if (primary != null && primary.hasFocus) {
       primary.unfocus();
     }
+
+    _restoreHostScrollAfterDismiss();
 
     widget.onTapOutside?.call();
   }
