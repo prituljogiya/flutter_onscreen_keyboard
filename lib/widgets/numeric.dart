@@ -168,7 +168,6 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
 
   void _runKeyAction(VoidCallback action) {
     if (!mounted || _teardown || !_keyboardController.isActive) return;
-    _retainPreviewFocus();
     action();
     _syncPreviewScroll();
     _retainPreviewFocus();
@@ -306,10 +305,40 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
           mainAxisSize: MainAxisSize.max,
           children: [
             _buildPreviewStrip(theme),
-            if (errorText != null) _buildErrorRow(errorText),
-            if (showBounds) _buildBoundsRow(theme),
-            SizedBox(
-              height: keysHeight,
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+              ),
+              child: Text(
+                _keyboardController.validationError ?? "",
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            if(widget.minValue != null && widget.maxValue != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, right: 8),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _boundField(
+                      theme,
+                      'Min',
+                      '${widget.minValue  ?? ""}',
+                    ),
+                    _boundField(
+                      theme,
+                      'Max ',
+                      '${widget.maxValue ?? ""}',
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
                 child: Row(

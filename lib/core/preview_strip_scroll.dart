@@ -52,8 +52,5 @@ void schedulePreviewStripScroll({
     }
   }
 
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    scroll();
-    WidgetsBinding.instance.addPostFrameCallback((_) => scroll());
-  });
+  WidgetsBinding.instance.addPostFrameCallback((_) => scroll());
 }

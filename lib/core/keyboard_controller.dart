@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'keyboard_key_timing.dart';
+
 import 'text_editing_controller_guard.dart';
 
 class KeyboardController extends GetxController {
@@ -50,6 +52,8 @@ class KeyboardController extends GetxController {
   RxBool get isShiftActiveRx => _isShiftActive;
   RxBool get isCapsLockRx => _isCapsLock;
   RxBool get capsOneShotRx => _capsOneShot;
+
+  bool get isCapsMode => _capsOneShot.value || _isCapsLock.value;
 
   /// Letter keys use uppercase layout when true (standard shift / caps-lock rules).
   bool get isUppercase {
@@ -122,15 +126,13 @@ class KeyboardController extends GetxController {
   void flashKey(String keyId) {
     _flashKeyId.value = keyId;
     _flashTimer?.cancel();
-    _flashTimer = Timer(const Duration(milliseconds: 220), () {
+    _flashTimer = Timer(KeyboardKeyTiming.flashHighlight, () {
       _flashKeyId.value = null;
     });
   }
 
-  /// Number-row dual keys (e.g. `1|!`): symbols on top, digits on bottom.
-  /// Top symbol on dual keys when Shift or single-tap Caps is active.
-  bool get useTopCharacterOnDualKey =>
-      _isShiftActive.value || _capsOneShot.value;
+  /// Number-row dual keys (e.g. `1|!`): symbol vs digit — [Shift] only, not Caps.
+  bool get useTopCharacterOnDualKey => _isShiftActive.value;
 
   void moveCursor(int delta) {
     if (!_canEdit) return;
@@ -169,11 +171,9 @@ class KeyboardController extends GetxController {
 
     _applyEditingValue(newText, newSelectionOffset);
 
+    // Shift is one-shot; Caps stays until the user taps Caps again (or Caps lock off).
     if (_isShiftActive.value) {
       _isShiftActive.value = false;
-    }
-    if (_capsOneShot.value) {
-      _capsOneShot.value = false;
     }
   }
 
@@ -249,13 +249,28 @@ class KeyboardController extends GetxController {
 
   void toggleShift() {
     _lastCapsTap = null;
-    _capsOneShot.value = false;
+
+    // Caps on + Shift → caps lock with both keys lit; layout inverts via Shift.
+    if (_capsOneShot.value && !_isCapsLock.value) {
+      _capsOneShot.value = false;
+      _isCapsLock.value = true;
+      _isShiftActive.value = true;
+      return;
+    }
+
+    if (_isCapsLock.value) {
+      _isShiftActive.value = !_isShiftActive.value;
+      return;
+    }
+
     _isShiftActive.value = !_isShiftActive.value;
   }
 
-  /// Caps: single tap toggles one-shot caps (Caps key lit, Shift not lit).
-  /// Double tap within [_capsDoubleTapWindow] turns caps lock on.
-  /// Tap again while locked turns caps lock off.
+  /// Caps: single tap toggles all-letter uppercase (Caps lit, Shift not lit).
+  /// Stays on while typing until Caps is tapped again.
+  /// Shift while Caps is on upgrades to caps lock (both keys can stay lit).
+  /// Double tap within [_capsDoubleTapWindow] turns caps lock on (Shift off).
+  /// Tap Caps again while locked (or one-shot on) turns caps off.
   void onCapsKeyPressed() {
     final now = DateTime.now();
 
@@ -277,8 +292,12 @@ class KeyboardController extends GetxController {
     }
 
     _lastCapsTap = now;
+    final turningOff = _capsOneShot.value;
     _isShiftActive.value = false;
-    _capsOneShot.value = !_capsOneShot.value;
+    _capsOneShot.value = !turningOff;
+    if (turningOff) {
+      _isShiftActive.value = false;
+    }
   }
 
   void toggleNumeric() {

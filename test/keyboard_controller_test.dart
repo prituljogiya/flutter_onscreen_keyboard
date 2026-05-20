@@ -69,10 +69,57 @@ void main() {
       expect(c.isShiftActive, isFalse);
       expect(c.isCapsLock, isFalse);
       expect(c.isUppercase, isTrue);
+      expect(c.isCapsMode, isTrue);
+      c.onClose();
+    });
 
+    test('shift while caps one-shot enables caps lock with both lit', () {
+      final c = newController();
+      c.onCapsKeyPressed();
       c.toggleShift();
+      expect(c.isCapsLock, isTrue);
       expect(c.isShiftActive, isTrue);
       expect(c.isCapsOneShot, isFalse);
+      expect(c.isUppercase, isFalse);
+
+      c.toggleShift();
+      expect(c.isShiftActive, isFalse);
+      expect(c.isUppercase, isTrue);
+      c.onClose();
+    });
+
+    test('single caps keeps uppercase layout after typing', () async {
+      final text = TextEditingController();
+      final c = newController(text: text);
+      c.onCapsKeyPressed();
+      expect(c.isUppercase, isTrue);
+
+      c.insertText('hello');
+      expect(text.text, 'hello');
+      expect(c.isCapsOneShot, isTrue);
+      expect(c.isUppercase, isTrue);
+      expect(c.currentLayout[1][0], 'Q');
+
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      c.onCapsKeyPressed();
+      expect(c.isCapsOneShot, isFalse);
+      expect(c.isUppercase, isFalse);
+      c.onClose();
+    });
+
+    test('caps does not change dual key symbol selection', () {
+      final c = newController();
+      c.onCapsKeyPressed();
+      expect(c.useTopCharacterOnDualKey, isFalse);
+
+      c.onCapsKeyPressed();
+      expect(c.isCapsLock, isTrue);
+      expect(c.useTopCharacterOnDualKey, isFalse);
+
+      c.toggleShift();
+      expect(c.useTopCharacterOnDualKey, isTrue);
+      c.toggleShift();
+      expect(c.useTopCharacterOnDualKey, isFalse);
       c.onClose();
     });
 

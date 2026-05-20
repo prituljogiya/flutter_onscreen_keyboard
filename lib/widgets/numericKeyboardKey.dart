@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../core/keyboard_key_timing.dart';
 import '../core/theme_controller.dart';
+import 'keyboard_tap_target.dart';
 
 class NumericKey extends StatefulWidget {
   final VoidCallback onTap;
   final Widget child;
   final bool isSpecial;
+  final bool enableHoldRepeat;
   final KeyboardTheme theme;
 
   const NumericKey({
@@ -14,6 +17,7 @@ class NumericKey extends StatefulWidget {
     required this.child,
     required this.theme,
     this.isSpecial = false,
+    this.enableHoldRepeat = false,
   });
 
   @override
@@ -30,11 +34,11 @@ class _NumericKeyState extends State<NumericKey>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 100),
+      duration: KeyboardKeyTiming.pressAnimation,
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.92).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.94).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
   }
 
@@ -44,20 +48,14 @@ class _NumericKeyState extends State<NumericKey>
     super.dispose();
   }
 
-  void _handleTapDown(TapDownDetails details) {
-    setState(() => _isPressed = true);
-    _controller.forward();
-  }
-
-  void _handleTapUp(TapUpDetails details) {
-    setState(() => _isPressed = false);
-    _controller.reverse();
-    widget.onTap();
-  }
-
-  void _handleTapCancel() {
-    setState(() => _isPressed = false);
-    _controller.reverse();
+  void _setPressed(bool pressed) {
+    if (_isPressed == pressed) return;
+    setState(() => _isPressed = pressed);
+    if (pressed) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
   }
 
   @override
@@ -123,10 +121,10 @@ class _NumericKeyState extends State<NumericKey>
         scale: _scaleAnimation.value,
         child: child,
       ),
-      child: GestureDetector(
-        onTapDown: _handleTapDown,
-        onTapUp: _handleTapUp,
-        onTapCancel: _handleTapCancel,
+      child: KeyboardTapTarget(
+        onPressed: widget.onTap,
+        enableHoldRepeat: widget.enableHoldRepeat,
+        onPointerStateChanged: _setPressed,
         child: Container(
           height: 44,
           width: 45,

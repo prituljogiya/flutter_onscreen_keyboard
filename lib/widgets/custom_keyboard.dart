@@ -63,8 +63,6 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   /// Skips [ _schedulePreviewCaretRefocus ] while closing so we do not refocus.
   bool _suppressPreviewRefocus = false;
   bool _teardown = false;
-  Timer? _backspaceTimer;
-
   void _ensurePreviewSelectionAtEnd() {
     final text = _inputController.text;
     final selection = _inputController.selection;
@@ -119,16 +117,11 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     }
   }
 
-  void _runWithKeyFlash(
-    String id,
+  void _runKeyAction(
     VoidCallback action, {
     bool refocusPreview = true,
   }) {
     if (!mounted || _teardown || !_keyboardController.isActive) return;
-    if (refocusPreview) {
-      _retainPreviewFocus();
-    }
-    _keyboardController.flashKey(id);
     action();
     _syncPreviewScroll();
     if (refocusPreview) {
@@ -220,7 +213,6 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     if (Get.isRegistered<KeyboardController>(tag: tag)) {
       Get.delete<KeyboardController>(tag: tag);
     }
-    _stopContinuousBackspace();
     _inputController.removeListener(_syncPreviewScroll);
     _previewScrollController.dispose();
     _previewFocusNode.dispose();
@@ -228,19 +220,6 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
       _inputController.dispose();
     }
     super.dispose();
-  }
-
-  void _startContinuousBackspace() {
-    _keyboardController.backspace();
-    _backspaceTimer?.cancel();
-    _backspaceTimer = Timer.periodic(const Duration(milliseconds: 70), (_) {
-      _keyboardController.backspace();
-    });
-  }
-
-  void _stopContinuousBackspace() {
-    _backspaceTimer?.cancel();
-    _backspaceTimer = null;
   }
 
   @override
@@ -314,7 +293,6 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
               onPointerDown: (_) => _retainPreviewFocus(),
               child: Obx(() {
               final layout = _keyboardController.currentLayout;
-              final flashKeyId = _keyboardController.flashKeyRx.value;
               // Repaint Shift/Caps when modifiers change (not only on layout swap).
               _keyboardController.isShiftActiveRx.value;
               _keyboardController.isCapsLockRx.value;
@@ -348,7 +326,6 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                     rowHeight: rowHeight,
                     keyBodyHeight: keyBodyHeight,
                     horizontalPadding: horizontalPadding,
-                    flashKeyId: flashKeyId,
                   );
                 },
               );
@@ -479,7 +456,6 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         required double rowHeight,
         required double keyBodyHeight,
         required double horizontalPadding,
-        required String? flashKeyId,
       }) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -495,7 +471,6 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                   key,
                   theme,
                   row.length,
-                  flashKeyId: flashKeyId,
                   rowHeight: rowHeight,
                   keyBodyHeight: keyBodyHeight,
                 );
@@ -511,11 +486,9 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
       String key,
       KeyboardTheme theme,
       int rowKeyCount, {
-        required String? flashKeyId,
         required double rowHeight,
         required double keyBodyHeight,
       }) {
-    final layoutCell = key;
     bool isSpecial = false;
     bool isActive = false;
     bool isSubActive = false;
@@ -543,23 +516,24 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         isActive = _keyboardController.isShiftActive;
         width = 76;
         onTap = () {
-          _runWithKeyFlash(layoutCell, _keyboardController.toggleShift);
+          _runKeyAction(_keyboardController.toggleShift);
         };
         break;
       case 'CAPS':
         isSpecial = true;
         isActive =
             _keyboardController.isCapsLock || _keyboardController.isCapsOneShot;
+        isSubActive = _keyboardController.isCapsLock;
         width = 76;
         onTap = () {
-          _runWithKeyFlash(layoutCell, _keyboardController.onCapsKeyPressed);
+          _runKeyAction(_keyboardController.onCapsKeyPressed);
         };
         break;
       case 'BACKSPACE':
         isSpecial = true;
         width = 56;
         onTap = () {
-          _runWithKeyFlash(layoutCell, _keyboardController.backspace);
+          _runKeyAction(_keyboardController.backspace);
         };
         break;
       case 'ENTER':
@@ -567,8 +541,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         isWide = false;
         width = 240;
         onTap = () {
-          _runWithKeyFlash(
-            layoutCell,
+          _runKeyAction(
             () {
               final success = _keyboardController.enter();
               if (!success) {
@@ -595,36 +568,36 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         width = 512;
         key = 'space';
         onTap = () {
-          _runWithKeyFlash(layoutCell, _keyboardController.insertSpace);
+          _runKeyAction(_keyboardController.insertSpace);
         };
         break;
       case '?123':
         isSpecial = true;
         onTap = () {
-          _runWithKeyFlash(layoutCell, _keyboardController.toggleNumeric);
+          _runKeyAction(_keyboardController.toggleNumeric);
         };
         break;
       case 'ABC':
         isSpecial = true;
         onTap = () {
-          _runWithKeyFlash(layoutCell, _keyboardController.switchToAlpha);
+          _runKeyAction(_keyboardController.switchToAlpha);
         };
         break;
       case 'LEFT ARROW':
         isSpecial = true;
         onTap = () {
-          _runWithKeyFlash(layoutCell, () => _keyboardController.moveCursor(-1));
+          _runKeyAction(() => _keyboardController.moveCursor(-1));
         };
         break;
       case 'RIGHT ARROW':
         isSpecial = true;
         onTap = () {
-          _runWithKeyFlash(layoutCell, () => _keyboardController.moveCursor(1));
+          _runKeyAction(() => _keyboardController.moveCursor(1));
         };
         break;
       default:
         onTap = () {
-          _runWithKeyFlash(layoutCell, () {
+          _runKeyAction(() {
             if (isDual) {
               final valueToInsert = _keyboardController.useTopCharacterOnDualKey
                   ? topChar
@@ -642,32 +615,34 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
 
     Widget keyWidget;
     if (isDual) {
-      keyWidget = DualKey(
-        topChar: topChar,
-        bottomChar: bottomChar,
-        onTap: onTap,
-        onLongPressKey: () {
-          _runWithKeyFlash(layoutCell, () {
-            _keyboardController.insertText(topChar);
-          });
-        },
-        height: keyBodyHeight,
-        alternateChars: alternates,
-        onAlternateSelected: onAlternate,
-        theme: theme,
-        primaryIsTop: _keyboardController.useTopCharacterOnDualKey,
-        isFlashHighlight: flashKeyId == layoutCell,
-      );
+      keyWidget = Obx(() {
+        final useTop = _keyboardController.useTopCharacterOnDualKey;
+        _keyboardController.isShiftActiveRx.value;
+        return DualKey(
+          key: ValueKey<String>('dual-$topChar-$bottomChar-$useTop'),
+          topChar: topChar,
+          bottomChar: bottomChar,
+          onTap: onTap,
+          onLongPressKey: () {
+            _runKeyAction(() {
+              _keyboardController.insertText(topChar);
+            });
+          },
+          height: keyBodyHeight,
+          alternateChars: alternates,
+          onAlternateSelected: onAlternate,
+          theme: theme,
+          primaryIsTop: useTop,
+        );
+      });
     } else {
       keyWidget = KeyboardKey(
         label: key,
         onTap: onTap,
-        onLongPressStart: key == 'BACKSPACE' ? _startContinuousBackspace : null,
-        onLongPressEnd: key == 'BACKSPACE' ? _stopContinuousBackspace : null,
+        enableHoldRepeat: key == 'BACKSPACE',
         isSpecial: isSpecial,
         isActive: isActive,
         isSubActive: isSubActive,
-        isFlashHighlight: flashKeyId == layoutCell,
         isWide: isWide,
         width: width,
         height: keyBodyHeight,

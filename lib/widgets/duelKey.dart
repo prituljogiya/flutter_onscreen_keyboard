@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../core/keyboard_key_timing.dart';
 import '../core/theme_controller.dart';
+import 'keyboard_tap_target.dart';
 
 class DualKey extends StatefulWidget {
   final String topChar;
@@ -14,9 +16,6 @@ class DualKey extends StatefulWidget {
   final double? height;
   /// When true, the character that is inserted on tap is shown larger/brighter.
   final bool primaryIsTop;
-  /// Stronger highlight for the primary glyph (e.g. double-Caps lock).
-  final bool boostPrimary;
-  final bool isFlashHighlight;
 
   const DualKey({
     super.key,
@@ -30,8 +29,6 @@ class DualKey extends StatefulWidget {
     this.width,
     this.height,
     this.primaryIsTop = false,
-    this.boostPrimary = false,
-    this.isFlashHighlight = false,
   });
 
   @override
@@ -48,13 +45,15 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 100),
+      duration: KeyboardKeyTiming.pressAnimation,
       vsync: this,
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
-      end: 0.92,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+      end: 0.94,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
   }
 
   @override
@@ -64,20 +63,25 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  void _handleTapDown(TapDownDetails details) {
-    setState(() => _isPressed = true);
-    _controller.forward();
+  @override
+  void didUpdateWidget(DualKey oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.primaryIsTop != widget.primaryIsTop) {
+      setState(() {});
+    }
   }
 
-  void _handleTapUp(TapUpDetails details) {
-    setState(() => _isPressed = false);
-    _controller.reverse();
-    widget.onTap();
-  }
+  bool get _hasAlternates =>
+      widget.alternateChars != null && widget.alternateChars!.isNotEmpty;
 
-  void _handleTapCancel() {
-    setState(() => _isPressed = false);
-    _controller.reverse();
+  void _setPressed(bool pressed) {
+    if (_isPressed == pressed) return;
+    setState(() => _isPressed = pressed);
+    if (pressed) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
   }
 
   void _handleLongPress() {
@@ -161,9 +165,8 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final keyHeight = widget.height ?? 48;
-    final boost = widget.boostPrimary ? 1.22 : 1.0;
-    final topScale = (widget.primaryIsTop ? 1.12 : 0.92) * boost;
-    final bottomScale = (!widget.primaryIsTop ? 1.12 : 0.92) * boost;
+    final topScale = widget.primaryIsTop ? 1.12 : 0.92;
+    final bottomScale = widget.primaryIsTop ? 0.92 : 1.12;
     final topFontSize = (keyHeight * 0.24 * topScale).clamp(10.0, 16.0);
     final bottomFontSize = (keyHeight * 0.28 * bottomScale).clamp(11.0, 17.0);
     final topWeight =
@@ -178,17 +181,19 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
       animation: _scaleAnimation,
       builder: (context, child) =>
           Transform.scale(scale: _scaleAnimation.value, child: child),
-      child: GestureDetector(
-        onTapDown: _handleTapDown,
-        onTapUp: _handleTapUp,
-        onTapCancel: _handleTapCancel,
-        onLongPress: _handleLongPress,
+      child: KeyboardTapTarget(
+        onPressed: widget.onTap,
+        fireOnRelease: _hasAlternates,
+        onPointerStateChanged: _setPressed,
+        onLongPress: (_hasAlternates || widget.onLongPressKey != null)
+            ? _handleLongPress
+            : null,
         child: Container(
           width: widget.width,
           height: widget.height ?? 48,
           margin: EdgeInsets.all(widget.theme.keySpacing / 2),
           decoration: BoxDecoration(
-            gradient: _isPressed || widget.isFlashHighlight
+            gradient: _isPressed
                 ? LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
@@ -200,10 +205,10 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
                 : widget.theme.primaryGradient,
             borderRadius: BorderRadius.circular(widget.theme.borderRadius),
             border: Border.all(
-              color: widget.isFlashHighlight || _isPressed
+              color: _isPressed
                   ? widget.theme.keyPressedColor
                   : widget.theme.keyBorderColor,
-              width: widget.isFlashHighlight || _isPressed
+              width: _isPressed
                   ? 2.2
                   : widget.theme.keyBorderWidth,
             ),

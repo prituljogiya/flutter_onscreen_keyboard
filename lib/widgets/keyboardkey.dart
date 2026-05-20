@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../core/keyboard_key_timing.dart';
 import '../core/theme_controller.dart';
+import 'keyboard_tap_target.dart';
 
 class KeyboardKey extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
   final VoidCallback? onLongPressKey;
-  final VoidCallback? onLongPressStart;
-  final VoidCallback? onLongPressEnd;
+  final bool enableHoldRepeat;
   final bool isSpecial;
   final bool isActive;
   /// Second-level Caps state (e.g. accent border).
   final bool isSubActive;
-  final bool isFlashHighlight;
   final bool isWide;
   final double? width;
   final double? height;
@@ -25,12 +25,10 @@ class KeyboardKey extends StatefulWidget {
     required this.label,
     required this.onTap,
     this.onLongPressKey,
-    this.onLongPressStart,
-    this.onLongPressEnd,
+    this.enableHoldRepeat = false,
     this.isSpecial = false,
     this.isActive = false,
     this.isSubActive = false,
-    this.isFlashHighlight = false,
     this.isWide = false,
     this.width,
     this.height,
@@ -50,17 +48,22 @@ class _KeyboardKeyState extends State<KeyboardKey>
   bool _isPressed = false;
   OverlayEntry? _overlayEntry;
 
+  bool get _hasAlternates =>
+      widget.alternateChars != null && widget.alternateChars!.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 100),
+      duration: KeyboardKeyTiming.pressAnimation,
       vsync: this,
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
-      end: 0.92,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+      end: 0.94,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
   }
 
   @override
@@ -70,24 +73,18 @@ class _KeyboardKeyState extends State<KeyboardKey>
     super.dispose();
   }
 
-  void _handleTapDown(TapDownDetails details) {
-    setState(() => _isPressed = true);
-    _controller.forward();
-  }
-
-  void _handleTapUp(TapUpDetails details) {
-    setState(() => _isPressed = false);
-    _controller.reverse();
-    widget.onTap();
-  }
-
-  void _handleTapCancel() {
-    setState(() => _isPressed = false);
-    _controller.reverse();
+  void _setPressed(bool pressed) {
+    if (_isPressed == pressed) return;
+    setState(() => _isPressed = pressed);
+    if (pressed) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
   }
 
   void _handleLongPress() {
-    if (widget.alternateChars != null && widget.alternateChars!.isNotEmpty) {
+    if (_hasAlternates) {
       _showAlternateChars();
       return;
     }
@@ -176,7 +173,7 @@ class _KeyboardKeyState extends State<KeyboardKey>
     Color textColor;
     Gradient? gradient;
 
-    if (widget.isFlashHighlight || _isPressed) {
+    if (_isPressed) {
       bgColor = widget.theme.keyPressedColor;
       textColor = widget.theme.activeKeyTextColor;
       gradient = null;
@@ -198,8 +195,8 @@ class _KeyboardKeyState extends State<KeyboardKey>
     if (widget.label == 'BACKSPACE') {
       keyContent = Icon(Icons.backspace_outlined, color: textColor, size: 20);
     } else if (widget.label == 'ENTER') {
-      keyContent =  Text(
-        "Enter",
+      keyContent = Text(
+        'Enter',
         style: TextStyle(
           color: textColor,
           fontSize: widget.theme.fontSize,
@@ -211,14 +208,10 @@ class _KeyboardKeyState extends State<KeyboardKey>
     } else if (widget.label == 'RIGHT ARROW') {
       keyContent = Icon(Icons.arrow_forward, color: textColor, size: 20);
     } else if (widget.label == 'SHIFT') {
-      keyContent = Icon(
-        Icons.arrow_upward,
-        color: textColor,
-        size: 22,
-      );
+      keyContent = Icon(Icons.arrow_upward, color: textColor, size: 22);
     } else if (widget.label == 'CAPS') {
       keyContent = Text(
-        "Caps",
+        'Caps',
         style: TextStyle(
           color: textColor,
           fontSize: widget.theme.fontSize - 1,
@@ -234,7 +227,7 @@ class _KeyboardKeyState extends State<KeyboardKey>
           borderRadius: BorderRadius.circular(2),
         ),
         child: Text(
-          "SPACE",
+          'SPACE',
           style: TextStyle(
             color: textColor,
             fontSize: widget.theme.fontSize,
@@ -266,55 +259,55 @@ class _KeyboardKeyState extends State<KeyboardKey>
       animation: _scaleAnimation,
       builder: (context, child) =>
           Transform.scale(scale: _scaleAnimation.value, child: child),
-      child: GestureDetector(
-        onTapDown: _handleTapDown,
-        onTapUp: _handleTapUp,
-        onTapCancel: _handleTapCancel,
-        onLongPress: _handleLongPress,
-        onLongPressStart: (_) => widget.onLongPressStart?.call(),
-        onLongPressEnd: (_) => widget.onLongPressEnd?.call(),
+      child: KeyboardTapTarget(
+        onPressed: widget.onTap,
+        fireOnRelease: _hasAlternates,
+        enableHoldRepeat: widget.enableHoldRepeat,
+        onPointerStateChanged: _setPressed,
+        onLongPress: (_hasAlternates || widget.onLongPressKey != null)
+            ? _handleLongPress
+            : null,
         child: Container(
-          width: widget.width,
-          height: widget.height ?? widget.width ?? 48,
-          margin: EdgeInsets.all(widget.theme.keySpacing / 2),
-          decoration: BoxDecoration(
-            gradient: gradient,
-            color: gradient == null ? bgColor : null,
-            borderRadius: BorderRadius.circular(widget.theme.borderRadius),
-            border: Border.all(
-              color: widget.isFlashHighlight || _isPressed
-                  ? widget.theme.keyPressedColor
-                  : widget.isActive
-                      ? widget.theme.activeKeyColor
-                      : widget.isSubActive
-                          ? const Color(0xFFFFB74D)
-                          : widget.theme.keyBorderColor,
-              width: (widget.isFlashHighlight ||
-                      _isPressed ||
-                      widget.isSubActive ||
-                      widget.isActive)
-                  ? 2.2
-                  : widget.theme.keyBorderWidth,
+            width: widget.width,
+            height: widget.height ?? widget.width ?? 48,
+            margin: EdgeInsets.all(widget.theme.keySpacing / 2),
+            decoration: BoxDecoration(
+              gradient: gradient,
+              color: gradient == null ? bgColor : null,
+              borderRadius: BorderRadius.circular(widget.theme.borderRadius),
+              border: Border.all(
+                color: _isPressed
+                    ? widget.theme.keyPressedColor
+                    : widget.isActive
+                        ? widget.theme.activeKeyColor
+                        : widget.isSubActive
+                            ? const Color(0xFFFFB74D)
+                            : widget.theme.keyBorderColor,
+                width: (_isPressed ||
+                        widget.isSubActive ||
+                        widget.isActive)
+                    ? 2.2
+                    : widget.theme.keyBorderWidth,
+              ),
+              boxShadow: _isPressed
+                  ? [
+                      BoxShadow(
+                        color: widget.theme.shadowColor.withOpacity(0.3),
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: widget.theme.shadowColor.withOpacity(0.4),
+                        blurRadius: widget.theme.keyElevation * 2,
+                        offset: Offset(0, widget.theme.keyElevation),
+                      ),
+                    ],
             ),
-            boxShadow: _isPressed
-                ? [
-              BoxShadow(
-                color: widget.theme.shadowColor.withOpacity(0.3),
-                blurRadius: 2,
-                offset: const Offset(0, 1),
-              ),
-            ]
-                : [
-              BoxShadow(
-                color: widget.theme.shadowColor.withOpacity(0.4),
-                blurRadius: widget.theme.keyElevation * 2,
-                offset: Offset(0, widget.theme.keyElevation),
-              ),
-            ],
+            alignment: Alignment.center,
+            child: keyContent,
           ),
-          alignment: Alignment.center,
-          child: keyContent,
-        ),
       ),
     );
   }
