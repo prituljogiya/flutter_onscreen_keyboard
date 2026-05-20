@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 
 import '../core/onscreen_keyboard_config.dart';
 import '../core/onscreen_keyboard_validation.dart';
@@ -22,8 +21,6 @@ class OnscreenKeyboardHost extends StatefulWidget {
     this.useDraggableInLandscape = true,
     this.draggableWidthFactor = 0.5,
     this.draggableHeightFactor = 0.5,
-    /// Builds keyboard panels after the first frame so the first field tap is fast.
-    this.prewarmKeyboards = true,
   });
 
   final Widget child;
@@ -33,8 +30,6 @@ class OnscreenKeyboardHost extends StatefulWidget {
   final bool useDraggableInLandscape;
   final double draggableWidthFactor;
   final double draggableHeightFactor;
-  final bool prewarmKeyboards;
-
   /// Opens the on-screen keyboard for [session] (used by [OnscreenTextField]).
   static void activate(BuildContext context, OnscreenFieldSession session) {
     final scope =
@@ -46,6 +41,26 @@ class OnscreenKeyboardHost extends StatefulWidget {
     context
         .findAncestorStateOfType<_OnscreenKeyboardHostState>()
         ?._activate(session);
+  }
+
+  /// Whether the keyboard is open for [focusNode].
+  static bool isOpenFor(BuildContext context, FocusNode focusNode) {
+    final scope =
+        context.getInheritedWidgetOfExactType<_OnscreenKeyboardScope>();
+    return scope?.state.isOpenFor(focusNode) ?? false;
+  }
+
+  /// Hides the keyboard panel (used by preview close buttons).
+  static void dismiss(BuildContext context) {
+    final scope =
+        context.getInheritedWidgetOfExactType<_OnscreenKeyboardScope>();
+    if (scope != null) {
+      scope.state._dismiss();
+      return;
+    }
+    context
+        .findAncestorStateOfType<_OnscreenKeyboardHostState>()
+        ?._dismiss();
   }
 
   @override
@@ -67,40 +82,8 @@ class _OnscreenKeyboardScope extends InheritedWidget {
 class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
   OnscreenFieldSession? _session;
   final GlobalKey _alphaKeyboardKey = GlobalKey(debugLabel: 'alphaKeyboard');
-  final GlobalKey _numericKeyboardKey = GlobalKey(debugLabel: 'numericKeyboard');
 
-  late final TextEditingController _warmupController;
-  late final FocusNode _warmupFocus;
-  bool _panelsMounted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _warmupController = TextEditingController();
-    _warmupFocus = FocusNode(
-      skipTraversal: true,
-      debugLabel: 'onscreenKeyboardWarmup',
-    );
-    if (useCustomOnscreenKeyboard && widget.prewarmKeyboards) {
-      SchedulerBinding.instance.scheduleFrameCallback((_) {
-        if (!mounted || _panelsMounted) return;
-        setState(() => _panelsMounted = true);
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _warmupController.dispose();
-    _warmupFocus.dispose();
-    super.dispose();
-  }
-
-  void _ensurePanelsMounted() {
-    if (!_panelsMounted) {
-      _panelsMounted = true;
-    }
-  }
+  bool isOpenFor(FocusNode focusNode) => _session?.focusNode == focusNode;
 
   void _activate(OnscreenFieldSession session) {
     if (!useCustomOnscreenKeyboard) {
@@ -114,7 +97,6 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       clearOnscreenKeyboardValidation(previous.focusNode);
     }
 
-    _ensurePanelsMounted();
     session.focusNode.requestFocus();
 
     if (!identical(previous, session)) {
@@ -125,15 +107,19 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
   }
 
   void _dismiss() {
-    if (!mounted) return;
-    final previous = _session;
-    if (previous != null) {
-      clearOnscreenKeyboardValidation(previous.focusNode);
-      previous.focusNode.unfocus();
+    if (!mounted || _session == null) return;
+
+    final previous = _session!;
+    setState(() => _session = null);
+
+    clearOnscreenKeyboardValidation(previous.focusNode);
+    previous.focusNode.unfocus();
+
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary != null && primary.hasFocus) {
+      primary.unfocus();
     }
-    if (_session != null) {
-      setState(() => _session = null);
-    }
+
     widget.onTapOutside?.call();
   }
 
@@ -141,15 +127,6 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
     widget.onEnterPressed?.call();
     _dismiss();
   }
-
-  OnscreenFieldSession get _fallbackSession => OnscreenFieldSession(
-        controller: _warmupController,
-        focusNode: _warmupFocus,
-        keyboardType: TextInputType.text,
-      );
-
-  OnscreenFieldSession _sessionOrFallback(OnscreenFieldSession? session) =>
-      session ?? _fallbackSession;
 
   @override
   Widget build(BuildContext context) {
@@ -161,7 +138,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
     final isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     final useDraggable =
-        isLandscape && widget.useDraggableInLandscape && _panelsMounted;
+        isLandscape && widget.useDraggableInLandscape;
 
     return _OnscreenKeyboardScope(
       state: this,
@@ -172,25 +149,28 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
   }
 
   Widget _buildDraggableShell(OnscreenFieldSession? session) {
-    final active = _sessionOrFallback(session);
-    final visible = session != null;
+    if (session == null) {
+      return widget.child;
+    }
 
     return DraggableDynamicKeyboard(
-      controller: active.controller,
-      focusNode: active.focusNode,
+      controller: session.controller,
+      focusNode: session.focusNode,
       commitOnEnterOnly: widget.commitOnEnterOnly,
-      useNumericKeyboard: active.useNumericKeyboard,
-      numericMinValue: active.minValue,
-      numericMaxValue: active.maxValue,
-      minLength: active.useNumericKeyboard ? null : active.minLength,
-      maxLength: active.useNumericKeyboard ? null : active.maxLength,
-      validator: active.validator,
+      useNumericKeyboard: session.useNumericKeyboard,
+      numericMinValue: session.minValue,
+      numericMaxValue: session.maxValue,
+      numericAllowDecimalInput: session.showDecimalKey,
+      numericIntegersOnly: session.integersOnlyValidation,
+      minLength: session.useNumericKeyboard ? null : session.minLength,
+      maxLength: session.useNumericKeyboard ? null : session.maxLength,
+      validator: session.validator,
       widthFactor: widget.draggableWidthFactor,
       heightFactor: widget.draggableHeightFactor,
       fullWidthInLandscape: false,
-      alwaysVisible: visible,
+      alwaysVisible: true,
       pushContent: false,
-      onTapOutside: _dismiss,
+      onDismiss: _dismiss,
       onEnterPressed: _onEnter,
       child: widget.child,
     );
@@ -198,68 +178,48 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
 
   Widget _buildPortraitShell(OnscreenFieldSession? session) {
     return TapRegion(
-      onTapOutside: (_) {
-        if (session != null) {
-          session.focusNode.unfocus();
-        }
-        _dismiss();
-      },
+      onTapOutside: (_) => _dismiss(),
       child: Column(
         children: [
           Expanded(child: widget.child),
-          if (_panelsMounted) ...[
-            _buildAlphaSlot(session),
-            _buildNumericSlot(session),
-          ],
+          if (session != null) _buildActiveKeyboard(session),
         ],
       ),
     );
   }
 
-  Widget _buildAlphaSlot(OnscreenFieldSession? session) {
-    final active = _sessionOrFallback(session);
-    final visible = session != null && !active.useNumericKeyboard;
-
-    return Visibility(
-      visible: visible,
-      maintainState: true,
-      maintainAnimation: true,
-      child: RepaintBoundary(
-        child: CustomKeyboard(
-          key: _alphaKeyboardKey,
-          controller: active.controller,
-          focusNode: active.focusNode,
-          commitOnEnterOnly: widget.commitOnEnterOnly,
-          minLength: active.minLength,
-          maxLength: active.maxLength,
-          validator: active.validator,
-          onTapOutside: _dismiss,
-          onEnterPressed: _onEnter,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNumericSlot(OnscreenFieldSession? session) {
-    final active = _sessionOrFallback(session);
-    final visible = session != null && active.useNumericKeyboard;
-
-    return Visibility(
-      visible: visible,
-      maintainState: true,
-      maintainAnimation: true,
-      child: RepaintBoundary(
+  Widget _buildActiveKeyboard(OnscreenFieldSession session) {
+    if (session.useNumericKeyboard) {
+      return RepaintBoundary(
         child: NumericKeyboard(
-          key: _numericKeyboardKey,
-          controller: active.controller,
-          focusNode: active.focusNode,
+          key: ValueKey<String>(
+            'nk_${session.focusNode.hashCode}_${session.showDecimalKey}_${session.integersOnlyValidation}',
+          ),
+          controller: session.controller,
+          focusNode: session.focusNode,
           commitOnEnterOnly: widget.commitOnEnterOnly,
-          minValue: active.minValue,
-          maxValue: active.maxValue,
-          validator: active.validator,
-          onTapOutside: _dismiss,
+          minValue: session.minValue,
+          maxValue: session.maxValue,
+          allowDecimalInput: session.showDecimalKey,
+          integersOnly: session.integersOnlyValidation,
+          validator: session.validator,
+          onDismiss: _dismiss,
           onEnterPressed: _onEnter,
         ),
+      );
+    }
+
+    return RepaintBoundary(
+      child: CustomKeyboard(
+        key: _alphaKeyboardKey,
+        controller: session.controller,
+        focusNode: session.focusNode,
+        commitOnEnterOnly: widget.commitOnEnterOnly,
+        minLength: session.minLength,
+        maxLength: session.maxLength,
+        validator: session.validator,
+        onDismiss: _dismiss,
+        onEnterPressed: _onEnter,
       ),
     );
   }

@@ -24,6 +24,8 @@ class DraggableDynamicKeyboard extends StatefulWidget {
   final bool useNumericKeyboard;
   final num? numericMinValue;
   final num? numericMaxValue;
+  final bool numericAllowDecimalInput;
+  final bool numericIntegersOnly;
 
   /// Passed to [CustomKeyboard] when [useNumericKeyboard] is false.
   final int? maxLength;
@@ -31,8 +33,8 @@ class DraggableDynamicKeyboard extends StatefulWidget {
   /// Passed to [CustomKeyboard] when [useNumericKeyboard] is false.
   final int? minLength;
 
-  /// Passed to the active keyboard; runs after unfocus on outside tap.
-  final VoidCallback? onTapOutside;
+  /// Passed to the active keyboard close button and outside dismiss.
+  final VoidCallback onDismiss;
 
   /// When set, used instead of [ThemeController.keyboardTheme] for panel chrome
   /// and passed through to the child keyboard.
@@ -59,9 +61,11 @@ class DraggableDynamicKeyboard extends StatefulWidget {
     this.useNumericKeyboard = false,
     this.numericMinValue,
     this.numericMaxValue,
+    this.numericAllowDecimalInput = true,
+    this.numericIntegersOnly = false,
     this.maxLength,
     this.minLength,
-    this.onTapOutside,
+    required this.onDismiss,
     this.keyboardTheme,
   });
 
@@ -388,7 +392,9 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                 height: keyboardHeight,
                 minValue: widget.numericMinValue,
                 maxValue: widget.numericMaxValue,
-                onTapOutside: widget.onTapOutside,
+                allowDecimalInput: widget.numericAllowDecimalInput,
+                integersOnly: widget.numericIntegersOnly,
+                onDismiss: widget.onDismiss,
                 keyboardTheme: theme,
               )
                   : CustomKeyboard(
@@ -401,7 +407,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                 height: keyboardHeight,
                 maxLength: widget.maxLength,
                 minLength: widget.minLength,
-                onTapOutside: widget.onTapOutside,
+                onDismiss: widget.onDismiss,
                 keyboardTheme: theme,
               ),
             ),

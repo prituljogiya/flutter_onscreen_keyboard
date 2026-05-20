@@ -5,6 +5,7 @@ import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
 import '../core/numeric_range.dart';
 import '../core/onscreen_keyboard_validation.dart';
+import '../core/preview_strip_scroll.dart';
 import '../core/numericKeyController.dart';
 import '../core/theme_controller.dart';
 import 'numerickeyboardkey.dart';
@@ -24,11 +25,14 @@ class NumericKeyboard extends StatefulWidget {
   final num? minValue;
   final num? maxValue;
 
-  /// Called when the user dismisses the keyboard without committing: after the
-  /// **close** (X) runs [NumericKeyboardController.closeKeyboard]. To dismiss
-  /// when the user taps outside the keyboard, wrap the keyboard and your
-  /// content in a parent [TapRegion] (see package example). Optional.
-  final VoidCallback? onTapOutside;
+  /// When false, hides the decimal (`.`) key on the pad.
+  final bool allowDecimalInput;
+
+  /// When true, only whole numbers are accepted (range min/max still applies).
+  final bool integersOnly;
+
+  /// Called when the user taps close (X) or the host dismisses the panel.
+  final VoidCallback onDismiss;
 
   /// When set, used instead of [ThemeController.keyboardTheme] (no GetX listen).
   final KeyboardTheme? keyboardTheme;
@@ -45,7 +49,9 @@ class NumericKeyboard extends StatefulWidget {
     this.height,
     this.minValue,
     this.maxValue,
-    this.onTapOutside,
+    this.allowDecimalInput = true,
+    this.integersOnly = false,
+    required this.onDismiss,
     this.keyboardTheme,
   });
 
@@ -57,16 +63,80 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   late NumericKeyboardController _keyboardController;
   late TextEditingController _inputController;
   late bool _ownsInputController;
+  late final FocusNode _previewFocusNode;
+  late final ScrollController _previewScrollController;
+  bool _suppressPreviewRefocus = false;
   bool _teardown = false;
+
+  void _ensurePreviewSelectionAtEnd() {
+    final text = _inputController.text;
+    final selection = _inputController.selection;
+    if (!selection.isValid && text.isNotEmpty) {
+      _inputController.selection = TextSelection.collapsed(offset: text.length);
+    }
+  }
+
+  static const TextStyle _previewTextStyle = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+  );
+
+  void _syncPreviewScroll() {
+    if (_teardown || !mounted) return;
+    schedulePreviewStripScroll(
+      scrollController: _previewScrollController,
+      textController: _inputController,
+      textStyle: _previewTextStyle,
+      canScroll: () => mounted && !_teardown,
+    );
+  }
+
+  void _closePanel() {
+    if (_teardown) return;
+    _suppressPreviewRefocus = true;
+    widget.onDismiss();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _suppressPreviewRefocus = false;
+    });
+  }
+
+  void _onHostFieldFocusChanged() {
+    if (!widget.focusNode.hasFocus || !mounted || _suppressPreviewRefocus) {
+      return;
+    }
+    _ensurePreviewSelectionAtEnd();
+    if (_previewFocusNode.canRequestFocus) {
+      _previewFocusNode.requestFocus();
+    }
+  }
+
+  void _retainPreviewFocus() {
+    if (!mounted || _suppressPreviewRefocus) return;
+    if (!_previewFocusNode.canRequestFocus) return;
+    if (!_previewFocusNode.hasFocus) {
+      _previewFocusNode.requestFocus();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _previewFocusNode = FocusNode(debugLabel: 'numericKeyboardPreview');
+    _previewScrollController = ScrollController();
+    widget.focusNode.addListener(_onHostFieldFocusChanged);
     _ownsInputController = widget.commitOnEnterOnly;
     _inputController = _ownsInputController
         ? TextEditingController(text: _seedText(widget.controller.text))
         : widget.controller;
+    _inputController.addListener(_syncPreviewScroll);
+    _ensurePreviewSelectionAtEnd();
     _initController();
+    if (widget.focusNode.hasFocus) {
+      _onHostFieldFocusChanged();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncPreviewScroll();
+    });
   }
 
   String _seedText(String committed) {
@@ -80,13 +150,17 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
       _keyboardController = Get.find<NumericKeyboardController>(tag: tag);
       _keyboardController.rebind(
         textController: _inputController,
+        previewFocusNode: _previewFocusNode,
         validator: _combinedValidate,
+        allowDecimalInput: widget.allowDecimalInput,
       );
     } else {
       _keyboardController = NumericKeyboardController(
         textController: _inputController,
         focusNode: widget.focusNode,
+        previewFocusNode: _previewFocusNode,
         validator: _combinedValidate,
+        allowDecimalInput: widget.allowDecimalInput,
       );
       Get.put(_keyboardController, tag: tag);
     }
@@ -94,20 +168,35 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
 
   void _runKeyAction(VoidCallback action) {
     if (!mounted || _teardown || !_keyboardController.isActive) return;
+    _retainPreviewFocus();
     action();
+    _syncPreviewScroll();
+    _retainPreviewFocus();
   }
 
-  String? _combinedValidate(String value) {
-    final rangeError = _rangeValidate(value);
+  String? _combinedValidate(String value, {bool allowIncomplete = true}) {
+    final rangeError = _rangeValidate(
+      value,
+      allowIncomplete: allowIncomplete,
+    );
     if (rangeError != null) return rangeError;
     return widget.validator?.call(value);
   }
 
-  String? _rangeValidate(String value) {
+  String? _rangeValidate(String value, {bool allowIncomplete = true}) {
     return NumericRange.validate(
       value,
       min: widget.minValue,
       max: widget.maxValue,
+      integersOnly: widget.integersOnly,
+      allowIncomplete: allowIncomplete,
+    );
+  }
+
+  String _commitText(String staging) {
+    return NumericRange.commitText(
+      staging,
+      integersOnly: widget.integersOnly,
     );
   }
 
@@ -115,16 +204,31 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   void didUpdateWidget(covariant NumericKeyboard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.focusNode != oldWidget.focusNode) {
+      oldWidget.focusNode.removeListener(_onHostFieldFocusChanged);
+      widget.focusNode.addListener(_onHostFieldFocusChanged);
       releaseOnscreenKeyboardControllers(oldWidget.focusNode);
       _initController();
       _keyboardController.clearValidation();
       if (widget.commitOnEnterOnly) {
         _reseedStagingFromCommitted();
       }
+      if (widget.focusNode.hasFocus) {
+        _onHostFieldFocusChanged();
+      }
     }
     if (widget.controller != oldWidget.controller && widget.commitOnEnterOnly) {
       _keyboardController.clearValidation();
-      _inputController.text = _seedText(widget.controller.text);
+      _reseedStagingFromCommitted();
+    }
+    if (widget.allowDecimalInput != oldWidget.allowDecimalInput ||
+        widget.integersOnly != oldWidget.integersOnly) {
+      _keyboardController.rebind(
+        textController: _inputController,
+        previewFocusNode: _previewFocusNode,
+        validator: _combinedValidate,
+        allowDecimalInput: widget.allowDecimalInput,
+      );
+      setState(() {});
     }
     if (widget.minValue != oldWidget.minValue ||
         widget.maxValue != oldWidget.maxValue ||
@@ -139,10 +243,14 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   @override
   void dispose() {
     _teardown = true;
+    widget.focusNode.removeListener(_onHostFieldFocusChanged);
+    _inputController.removeListener(_syncPreviewScroll);
     final tag = widget.focusNode.hashCode.toString();
     if (Get.isRegistered<NumericKeyboardController>(tag: tag)) {
       Get.delete<NumericKeyboardController>(tag: tag);
     }
+    _previewScrollController.dispose();
+    _previewFocusNode.dispose();
     if (_ownsInputController) {
       _inputController.dispose();
     }
@@ -150,10 +258,13 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   }
 
   void _reseedStagingFromCommitted() {
-    _inputController.text = _seedText(widget.controller.text);
-    _inputController.selection = TextSelection.collapsed(
-      offset: _inputController.text.length,
+    final text = _seedText(widget.controller.text);
+    _inputController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+      composing: TextRange.empty,
     );
+    _syncPreviewScroll();
   }
 
   @override
@@ -194,62 +305,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.max,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 50,
-                    margin: const EdgeInsets.fromLTRB(12, 10, 0, 3),
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    alignment: Alignment.centerLeft,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.2),
-                      border: const Border(
-                        bottom: BorderSide(
-                          color: Colors.white24,
-                          width: 1.2,
-                        ),
-                      ),
-                    ),
-                    child: ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _inputController,
-                      builder: (context, value, _) {
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                value.text,
-                                style: TextStyle(
-                                  color: theme.keyTextColor,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.close,
-                      size: 18,
-                      color: theme.keyTextColor,
-                    ),
-                    onPressed: () {
-                      _keyboardController.closeKeyboard();
-                      widget.onTapOutside?.call();
-                    },
-                  ),
-                ),
-              ],
-            ),
+            _buildPreviewStrip(theme),
             if (errorText != null) _buildErrorRow(errorText),
             if (showBounds) _buildBoundsRow(theme),
             SizedBox(
@@ -288,6 +344,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                             child: Row(
                               children: [
                                 Expanded(
+                                  flex: widget.allowDecimalInput ? 1 : 2,
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 4,
@@ -295,14 +352,15 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                                     child: _buildDigitKey(theme, '0'),
                                   ),
                                 ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
+                                if (widget.allowDecimalInput)
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      child: _decimalKey(theme),
                                     ),
-                                    child: _decimalKey(theme),
                                   ),
-                                ),
                                 Expanded(
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -348,6 +406,88 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         ),
       );
     });
+  }
+
+  Widget _buildPreviewStrip(KeyboardTheme theme) {
+    final caretColor = theme.keyTextColor;
+
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 50,
+            margin: const EdgeInsets.fromLTRB(12, 10, 0, 3),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            alignment: Alignment.centerLeft,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.2),
+              border: const Border(
+                bottom: BorderSide(
+                  color: Colors.white24,
+                  width: 1.2,
+                ),
+              ),
+            ),
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                textSelectionTheme: TextSelectionThemeData(
+                  cursorColor: caretColor,
+                  selectionColor: Colors.white24,
+                  selectionHandleColor: caretColor,
+                ),
+              ),
+              child: TextField(
+                key: const ValueKey<String>('numericKeyboardPreview'),
+                controller: _inputController,
+                focusNode: _previewFocusNode,
+                scrollController: _previewScrollController,
+                scrollPhysics: const ClampingScrollPhysics(),
+                keyboardType: TextInputType.none,
+                textInputAction: TextInputAction.none,
+                enableSuggestions: false,
+                autocorrect: false,
+                cursorColor: caretColor,
+                cursorWidth: 2.5,
+                showCursor: true,
+                readOnly: true,
+                enableInteractiveSelection: false,
+                style: TextStyle(
+                  color: theme.keyTextColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  isCollapsed: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                maxLines: 1,
+              ),
+            ),
+          ),
+        ),
+        Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (_) => _closePanel(),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _closePanel,
+              customBorder: const CircleBorder(),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  Icons.close,
+                  size: 18,
+                  color: theme.keyTextColor,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildErrorRow(String message) {
@@ -468,17 +608,21 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
       theme: theme,
       onTap: () {
         _runKeyAction(() {
-          final success = _keyboardController.enter();
+          final success = _keyboardController.enter(
+            strictValidator: (value) =>
+                _combinedValidate(value, allowIncomplete: false),
+          );
           if (!success) return;
 
           if (widget.commitOnEnterOnly) {
-            widget.controller.text = _inputController.text;
+            final committed = _commitText(_inputController.text);
+            widget.controller.text = committed;
             widget.controller.selection = TextSelection.collapsed(
               offset: widget.controller.text.length,
             );
           }
 
-          widget.onSubmitted?.call(_inputController.text);
+          widget.onSubmitted?.call(_commitText(_inputController.text));
           widget.onEnterPressed?.call();
         });
       },

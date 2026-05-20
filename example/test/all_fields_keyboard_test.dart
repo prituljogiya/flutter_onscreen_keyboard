@@ -29,6 +29,19 @@ void main() {
       expect(fieldText(tester, 'field_name'), 'ann');
     });
 
+    testWidgets('Name close button dismisses keyboard', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_name');
+      expect(find.byType(CustomKeyboard), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.close).last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CustomKeyboard), findsNothing);
+      expect(find.byKey(customKeyboardPreviewKey), findsNothing);
+    });
+
     testWidgets('Name blocks Enter below min length', (tester) async {
       bindViewport(tester);
       await pumpKeyboardDemo(tester);
@@ -84,6 +97,43 @@ void main() {
       expect(find.byType(CustomKeyboard), findsNothing);
       expect(find.text('Min Value'), findsOneWidget);
       expect(find.text('Max Value'), findsOneWidget);
+      expect(find.text('.'), findsOneWidget);
+    });
+
+    testWidgets('Age pressing decimal does not show error while typing', (
+      tester,
+    ) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_age');
+      await typeDigits(tester, '2');
+      await tapKeyLabel(tester, '.');
+      expect(find.textContaining('Must be >='), findsNothing);
+      expect(find.textContaining('Must be <='), findsNothing);
+      expect(find.text('Whole numbers only'), findsNothing);
+    });
+
+    testWidgets('Age shows whole-number error for 2.2 not range error', (
+      tester,
+    ) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_age');
+      await typeNumber(tester, '2.2');
+      expect(find.text('Whole numbers only'), findsOneWidget);
+      expect(find.textContaining('Must be >='), findsNothing);
+    });
+
+    testWidgets('Age close button dismisses keyboard', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_age');
+      expect(find.byType(NumericKeyboard), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.close).last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NumericKeyboard), findsNothing);
     });
 
     testWidgets('Age commits in range on Enter', (tester) async {
@@ -105,6 +155,19 @@ void main() {
       await tapEnter(tester);
 
       expect(fieldText(tester, 'field_quantity'), '10');
+    });
+
+    testWidgets('Percent commits whole-number decimal as integer', (
+      tester,
+    ) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_percent');
+      // Integer fields no longer show '.' — type 10 directly.
+      await typeDigits(tester, '10');
+      await tapEnter(tester);
+
+      expect(fieldText(tester, 'field_percent'), '10');
     });
 
     testWidgets('Quantity error clears when switching fields', (tester) async {
@@ -151,6 +214,15 @@ void main() {
       expect(fieldText(tester, 'field_amount'), '50');
     });
 
+    testWidgets('Age quantity and rating all show decimal key', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      for (final key in ['field_age', 'field_quantity', 'field_rating']) {
+        await tapField(tester, key);
+        expect(find.text('.'), findsOneWidget);
+      }
+    });
+
     testWidgets('Rating shows decimal bounds on keyboard', (tester) async {
       bindViewport(tester);
       await pumpKeyboardDemo(tester);
@@ -158,6 +230,18 @@ void main() {
 
       expect(find.text('3.1'), findsOneWidget);
       expect(find.text('5.5'), findsOneWidget);
+    });
+
+    testWidgets('Rating does not error while typing incomplete decimal', (
+      tester,
+    ) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_rating');
+      await typeDigits(tester, '3');
+      await tapKeyLabel(tester, '.');
+      expect(find.textContaining('Must be >='), findsNothing);
+      expect(find.text('Enter a valid number'), findsNothing);
     });
 
     testWidgets('Rating commits decimal in range on Enter', (tester) async {

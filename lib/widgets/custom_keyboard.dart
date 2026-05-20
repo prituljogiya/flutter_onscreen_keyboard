@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
 import '../core/onscreen_keyboard_validation.dart';
+import '../core/preview_strip_scroll.dart';
 import '../core/theme_controller.dart';
 import 'duelKey.dart';
 
@@ -27,11 +28,8 @@ class CustomKeyboard extends StatefulWidget {
   /// Minimum preview length before Enter commits (shown on the keyboard panel).
   final int? minLength;
 
-  /// Called when the user dismisses the keyboard without committing: after
-  /// [focusNode.unfocus] on outside tap (when the host wraps the keyboard in a
-  /// parent [TapRegion]), or immediately after the preview **close** (X) runs
-  /// [KeyboardController.closeKeyboard]. Optional.
-  final VoidCallback? onTapOutside;
+  /// Called when the user taps close (X) or the host dismisses the panel.
+  final VoidCallback onDismiss;
 
   /// When set, used instead of [ThemeController.keyboardTheme] (no GetX listen).
   final KeyboardTheme? keyboardTheme;
@@ -47,7 +45,7 @@ class CustomKeyboard extends StatefulWidget {
     this.height,
     this.maxLength,
     this.minLength,
-    this.onTapOutside,
+    required this.onDismiss,
     this.keyboardTheme,
   });
 
@@ -61,7 +59,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   late bool _ownsInputController;
   late final FocusNode _previewFocusNode;
   /// Avoid stealing focus from the preview strip when closing the keyboard.
-  late final FocusNode _closeButtonFocusNode;
+  late final ScrollController _previewScrollController;
   /// Skips [ _schedulePreviewCaretRefocus ] while closing so we do not refocus.
   bool _suppressPreviewRefocus = false;
   bool _teardown = false;
@@ -75,8 +73,38 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     }
   }
 
+  TextStyle _previewTextStyle(bool isLandscape) {
+    return TextStyle(
+      color: Colors.white,
+      fontSize: isLandscape ? 16 : 18,
+    );
+  }
+
+  void _syncPreviewScroll() {
+    if (_teardown || !mounted) return;
+    final isLandscape = MediaQuery.maybeOrientationOf(context) ==
+        Orientation.landscape;
+    schedulePreviewStripScroll(
+      scrollController: _previewScrollController,
+      textController: _inputController,
+      textStyle: _previewTextStyle(isLandscape),
+      canScroll: () => mounted && !_teardown,
+    );
+  }
+
+  void _closePanel() {
+    if (_teardown) return;
+    _suppressPreviewRefocus = true;
+    widget.onDismiss();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _suppressPreviewRefocus = false;
+    });
+  }
+
   void _onHostFieldFocusChanged() {
-    if (!widget.focusNode.hasFocus || !mounted) return;
+    if (!widget.focusNode.hasFocus || !mounted || _suppressPreviewRefocus) {
+      return;
+    }
     _ensurePreviewSelectionAtEnd();
     if (_previewFocusNode.canRequestFocus) {
       _previewFocusNode.requestFocus();
@@ -102,6 +130,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     }
     _keyboardController.flashKey(id);
     action();
+    _syncPreviewScroll();
     if (refocusPreview) {
       _retainPreviewFocus();
     }
@@ -111,21 +140,21 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   void initState() {
     super.initState();
     _previewFocusNode = FocusNode(debugLabel: 'keyboardPreview');
-    _closeButtonFocusNode = FocusNode(
-      canRequestFocus: false,
-      skipTraversal: true,
-      debugLabel: 'keyboardClose',
-    );
+    _previewScrollController = ScrollController();
     widget.focusNode.addListener(_onHostFieldFocusChanged);
     _ownsInputController = widget.commitOnEnterOnly;
     _inputController = _ownsInputController
         ? TextEditingController(text: widget.controller.text)
         : widget.controller;
+    _inputController.addListener(_syncPreviewScroll);
     _ensurePreviewSelectionAtEnd();
     _initController();
     if (widget.focusNode.hasFocus) {
       _onHostFieldFocusChanged();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncPreviewScroll();
+    });
   }
 
   void _initController() {
@@ -192,7 +221,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
       Get.delete<KeyboardController>(tag: tag);
     }
     _stopContinuousBackspace();
-    _closeButtonFocusNode.dispose();
+    _inputController.removeListener(_syncPreviewScroll);
+    _previewScrollController.dispose();
     _previewFocusNode.dispose();
     if (_ownsInputController) {
       _inputController.dispose();
@@ -394,6 +424,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                 key: const ValueKey<String>('customKeyboardPreview'),
                 controller: _inputController,
                 focusNode: _previewFocusNode,
+                scrollController: _previewScrollController,
+                scrollPhysics: const ClampingScrollPhysics(),
                 keyboardType: TextInputType.none,
                 textInputAction: TextInputAction.none,
                 enableSuggestions: false,
@@ -417,23 +449,24 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: IconButton(
-            focusNode: _closeButtonFocusNode,
-            icon: const Icon(
-              Icons.close,
-              size: 20,
-              color: Colors.white,
+        Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (_) => _closePanel(),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _closePanel,
+              customBorder: const CircleBorder(),
+              child: const SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  Icons.close,
+                  size: 20,
+                  color: Colors.white,
+                ),
+              ),
             ),
-            onPressed: () {
-              _suppressPreviewRefocus = true;
-              _keyboardController.closeKeyboard();
-              widget.onTapOutside?.call();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _suppressPreviewRefocus = false;
-              });
-            },
           ),
         ),
       ],

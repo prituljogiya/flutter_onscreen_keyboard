@@ -25,4 +25,24 @@ void main() {
       expect(preferOnscreenNumericKeyboard(TextInputType.name), isFalse);
     });
   });
+
+  group('integersOnlyKeyboardType', () {
+    test('integer number types use whole-number validation', () {
+      expect(integersOnlyKeyboardType(TextInputType.number), isTrue);
+      expect(
+        integersOnlyKeyboardType(const TextInputType.numberWithOptions()),
+        isTrue,
+      );
+      expect(integersOnlyKeyboardType(TextInputType.phone), isFalse);
+    });
+
+    test('decimal numberWithOptions allows fractions', () {
+      expect(
+        integersOnlyKeyboardType(
+          const TextInputType.numberWithOptions(decimal: true),
+        ),
+        isFalse,
+      );
+    });
+  });
 }

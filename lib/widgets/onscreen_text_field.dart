@@ -19,6 +19,8 @@ class OnscreenTextField extends StatelessWidget {
     this.maxLength,
     this.minValue,
     this.maxValue,
+    this.allowDecimalInput,
+    this.integersOnly,
     this.validator,
     this.maxLines = 1,
     this.showCursor = true,
@@ -35,6 +37,12 @@ class OnscreenTextField extends StatelessWidget {
   final int? maxLength;
   final num? minValue;
   final num? maxValue;
+
+  /// When set, controls whether the numeric pad shows a `.` key (default true).
+  final bool? allowDecimalInput;
+
+  /// When set, values must be whole numbers; range min/max still applies.
+  final bool? integersOnly;
   final String? Function(String)? validator;
   final int? maxLines;
   final bool showCursor;
@@ -49,6 +57,8 @@ class OnscreenTextField extends StatelessWidget {
         maxLength: maxLength,
         minValue: minValue,
         maxValue: maxValue,
+        allowDecimalInput: allowDecimalInput,
+        integersOnly: integersOnly,
         validator: validator,
       );
 
@@ -68,20 +78,20 @@ class OnscreenTextField extends StatelessWidget {
       );
     }
 
-    return Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: (_) => OnscreenKeyboardHost.activate(context, _session),
-      child: TextField(
-        key: fieldKey,
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: keyboardType,
-        readOnly: true,
-        showCursor: showCursor,
-        maxLines: maxLines,
-        maxLength: maxLength,
-        decoration: decoration,
-      ),
+    return TextField(
+      key: fieldKey,
+      controller: controller,
+      focusNode: focusNode,
+      keyboardType: keyboardType,
+      readOnly: true,
+      showCursor: showCursor,
+      maxLines: maxLines,
+      maxLength: maxLength,
+      onTap: () {
+        if (OnscreenKeyboardHost.isOpenFor(context, focusNode)) return;
+        OnscreenKeyboardHost.activate(context, _session);
+      },
+      decoration: decoration,
     );
   }
 }

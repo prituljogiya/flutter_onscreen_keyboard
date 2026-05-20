@@ -23,3 +23,20 @@ bool preferOnscreenNumericKeyboard(TextInputType keyboardType) {
   }
   return false;
 }
+
+/// Whether committed values must be whole numbers (range still applies).
+///
+/// True for [TextInputType.number] and `numberWithOptions` without `decimal: true`.
+/// The `.` key can still be shown; incomplete fractions like `3.` defer errors
+/// until Enter.
+bool integersOnlyKeyboardType(TextInputType keyboardType) {
+  if (keyboardType.index != TextInputType.number.index) {
+    return false;
+  }
+  return keyboardType.decimal != true;
+}
+
+/// @deprecated Use [integersOnlyKeyboardType]. Kept for callers that inferred
+/// decimal-key visibility from keyboard type.
+bool allowsDecimalInput(TextInputType keyboardType) =>
+    keyboardType.decimal == true;

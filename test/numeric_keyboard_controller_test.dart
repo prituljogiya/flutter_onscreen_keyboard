@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_onscreen_keyboard/core/numericKeyController.dart';
+import 'package:flutter_onscreen_keyboard/core/numeric_range.dart';
 
 void main() {
   group('NumericKeyboardController', () {
@@ -61,6 +62,42 @@ void main() {
       textController.text = '201';
       expect(c.enter(), isFalse);
       expect(c.validationError, 'Must be <= 200');
+    });
+
+    test('insertDecimal is ignored when decimal input is disabled', () {
+      final c2 = NumericKeyboardController(
+        textController: textController,
+        focusNode: focusNode,
+        allowDecimalInput: false,
+      );
+      c2.insertDecimal();
+      expect(textController.text, '0');
+      c2.dispose();
+    });
+
+    test('incomplete decimal does not show error while typing', () {
+      final c2 = NumericKeyboardController(
+        textController: textController,
+        focusNode: focusNode,
+        validator: (v) => NumericRange.validate(v, min: 3.1, max: 5.5),
+        allowDecimalInput: true,
+      );
+      c2.insertDigit('3');
+      c2.insertDecimal();
+      expect(c2.validationError, isNull);
+      expect(
+        c2.enter(
+          strictValidator: (v) => NumericRange.validate(
+            v,
+            min: 3.1,
+            max: 5.5,
+            allowIncomplete: false,
+          ),
+        ),
+        isFalse,
+      );
+      expect(c2.validationError, 'Must be >= 3.1');
+      c2.dispose();
     });
 
     test('whitespace-only validation is treated as no error', () {
