@@ -11,6 +11,10 @@ class NumericKeyboardController extends GetxController {
   FocusNode? previewFocusNode;
   String? Function(String)? validator;
   bool allowDecimalInput;
+  bool integersOnly;
+  num? minValue;
+  num? maxValue;
+  int? maxLength;
 
   final RxnString _validationError = RxnString();
   bool _active = true;
@@ -29,13 +33,23 @@ class NumericKeyboardController extends GetxController {
     this.previewFocusNode,
     this.validator,
     this.allowDecimalInput = true,
+    this.integersOnly = false,
+    this.minValue,
+    this.maxValue,
+    this.maxLength,
   });
+
+  bool get canInsertDecimal => allowDecimalInput && !integersOnly;
 
   void rebind({
     required TextEditingController textController,
     FocusNode? previewFocusNode,
     String? Function(String)? validator,
     bool? allowDecimalInput,
+    bool? integersOnly,
+    num? minValue,
+    num? maxValue,
+    int? maxLength,
   }) {
     this.textController = textController;
     if (previewFocusNode != null) {
@@ -45,6 +59,12 @@ class NumericKeyboardController extends GetxController {
     if (allowDecimalInput != null) {
       this.allowDecimalInput = allowDecimalInput;
     }
+    if (integersOnly != null) {
+      this.integersOnly = integersOnly;
+    }
+    this.minValue = minValue;
+    this.maxValue = maxValue;
+    this.maxLength = maxLength;
     _active = true;
     clearValidation();
   }
@@ -70,11 +90,23 @@ class NumericKeyboardController extends GetxController {
 
   void insertDigit(String digit) {
     if (!_canEdit) return;
-    _hasUserEdited = true;
 
     final currentText = textController.text;
+    if (!NumericRange.canAcceptDigit(
+      currentText: currentText,
+      digit: digit,
+      min: minValue,
+      max: maxValue,
+      integersOnly: integersOnly,
+      maxLength: maxLength,
+    )) {
+      return;
+    }
+
+    _hasUserEdited = true;
+
     final String newText;
-    if (currentText == '0' && digit != '.') {
+    if ((currentText.isEmpty || currentText == '0') && digit != '.') {
       newText = digit;
     } else {
       newText = currentText + digit;
@@ -84,16 +116,18 @@ class NumericKeyboardController extends GetxController {
     _validate();
   }
 
-  void insertDecimal() {
-    if (!_canEdit || !allowDecimalInput) return;
+  /// Returns false when `.` is not allowed (no text change).
+  bool insertDecimal() {
+    if (!_canEdit || !canInsertDecimal) return false;
     _hasUserEdited = true;
 
     final currentText = textController.text;
-    if (currentText.contains('.')) return;
+    if (currentText.contains('.')) return false;
 
-    final newText = '$currentText.';
+    final newText = currentText.isEmpty ? '0.' : '$currentText.';
     _applyEditingValue(newText, newText.length);
     _validate();
+    return true;
   }
 
   void backspace() {
@@ -101,11 +135,13 @@ class NumericKeyboardController extends GetxController {
     _hasUserEdited = true;
 
     final currentText = textController.text;
+    if (currentText.isEmpty) return;
+
     final String newText;
     if (currentText.length > 1) {
       newText = currentText.substring(0, currentText.length - 1);
     } else {
-      newText = '0';
+      newText = '';
     }
 
     _applyEditingValue(newText, newText.length);
@@ -142,13 +178,15 @@ class NumericKeyboardController extends GetxController {
 
   void clear() {
     if (!_canEdit) return;
-    _applyEditingValue('0', 1);
+    _hasUserEdited = false;
+    _applyEditingValue('', 0);
     clearValidation();
   }
 
   void cancel() {
     if (!_canEdit) return;
-    _applyEditingValue('0', 1);
+    _hasUserEdited = false;
+    _applyEditingValue('', 0);
     clearValidation();
   }
 
@@ -172,5 +210,5 @@ class NumericKeyboardController extends GetxController {
         (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
-  void validateNow() => _validate();
+  void validateNow() => _validate(force: true);
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_onscreen_keyboard/core/keyboard_controller.dart';
+import 'package:flutter_onscreen_keyboard/core/onscreen_keyboard_validation.dart';
 import 'package:get/get.dart';
 
 void main() {
@@ -14,12 +15,14 @@ void main() {
     TextEditingController? text,
     int? minLength,
     int? maxLength,
+    String? Function(String)? validator,
   }) {
     return KeyboardController(
       textController: text ?? TextEditingController(),
       focusNode: FocusNode(),
       minLength: minLength,
       maxLength: maxLength,
+      validator: validator,
     );
   }
 
@@ -59,6 +62,31 @@ void main() {
       expect(c.enter(), isTrue);
       c.onClose();
     });
+
+    test('empty value blocks Enter and keeps validation visible', () {
+      final text = TextEditingController();
+      final c = newController(text: text);
+      expect(c.enter(), isFalse);
+      expect(c.shouldShowValidationError, isTrue);
+      expect(c.validationError, 'Enter a value');
+      c.onClose();
+    });
+
+    test('validator runs on Enter', () {
+      final text = TextEditingController();
+      final c = newController(
+        text: text,
+        validator: OnscreenKeyboardValidators.email,
+      );
+      c.insertText('bad');
+      expect(c.enter(), isFalse);
+      expect(c.validationError, 'Enter a valid email');
+
+      c.clearValidation();
+      c.insertText('user@example.com');
+      expect(c.enter(), isTrue);
+      c.onClose();
+    });
   });
 
   group('Caps / shift', () {
@@ -86,6 +114,50 @@ void main() {
       expect(c.isShiftActive, isFalse);
       expect(c.isUppercase, isTrue);
       c.onClose();
+    });
+
+    test('caps while shift active enables caps lock with both lit', () {
+      final c = newController();
+      c.toggleShift();
+      expect(c.isShiftActive, isTrue);
+      expect(c.isCapsLock, isFalse);
+
+      c.onCapsKeyPressed();
+      expect(c.isCapsLock, isTrue);
+      expect(c.isShiftActive, isTrue);
+      expect(c.isCapsOneShot, isFalse);
+      expect(c.isUppercase, isFalse);
+      c.onClose();
+    });
+
+    test('caps lock then shift toggles case same as shift then caps lock', () {
+      final fromCapsFirst = newController();
+      fromCapsFirst.onCapsKeyPressed();
+      fromCapsFirst.toggleShift();
+
+      final fromShiftFirst = newController();
+      fromShiftFirst.toggleShift();
+      fromShiftFirst.onCapsKeyPressed();
+
+      expect(fromCapsFirst.isCapsLock, isTrue);
+      expect(fromShiftFirst.isCapsLock, isTrue);
+      expect(fromCapsFirst.isShiftActive, isTrue);
+      expect(fromShiftFirst.isShiftActive, isTrue);
+      expect(fromCapsFirst.isCapsOneShot, isFalse);
+      expect(fromShiftFirst.isCapsOneShot, isFalse);
+      expect(fromCapsFirst.isUppercase, isFalse);
+      expect(fromShiftFirst.isUppercase, isFalse);
+
+      fromCapsFirst.toggleShift();
+      expect(fromCapsFirst.isShiftActive, isFalse);
+      expect(fromCapsFirst.isUppercase, isTrue);
+
+      fromCapsFirst.toggleShift();
+      expect(fromCapsFirst.isShiftActive, isTrue);
+      expect(fromCapsFirst.isUppercase, isFalse);
+
+      fromCapsFirst.onClose();
+      fromShiftFirst.onClose();
     });
 
     test('single caps keeps uppercase layout after typing', () async {

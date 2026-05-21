@@ -18,7 +18,7 @@ void main() {
     }
 
     setUp(() {
-      textController = TextEditingController(text: '0');
+      textController = TextEditingController();
       focusNode = FocusNode();
       c = NumericKeyboardController(
         textController: textController,
@@ -33,7 +33,8 @@ void main() {
       focusNode.dispose();
     });
 
-    test('seed value does not show error until user types', () {
+    test('empty preview does not show error until user types', () {
+      expect(textController.text, isEmpty);
       expect(c.validationError, isNull);
       textController.text = '201';
       expect(c.validationError, isNull);
@@ -58,7 +59,26 @@ void main() {
       expect(c.validationError, isNull);
     });
 
+    test('enter blocks empty without min or max', () {
+      final c2 = NumericKeyboardController(
+        textController: textController,
+        focusNode: focusNode,
+      );
+      expect(c2.enter(strictValidator: (v) => NumericRange.validate(
+            v,
+            allowIncomplete: false,
+          )), isFalse);
+      expect(c2.validationError, 'Enter a number');
+      c2.dispose();
+    });
+
     test('enter always validates even without prior typing', () {
+      expect(c.enter(strictValidator: (v) => NumericRange.validate(
+            v,
+            allowIncomplete: false,
+          )), isFalse);
+      expect(c.validationError, 'Enter a number');
+
       textController.text = '201';
       expect(c.enter(), isFalse);
       expect(c.validationError, 'Must be <= 200');
@@ -70,8 +90,58 @@ void main() {
         focusNode: focusNode,
         allowDecimalInput: false,
       );
+      expect(c2.insertDecimal(), isFalse);
+      expect(textController.text, isEmpty);
+      c2.dispose();
+    });
+
+    test('clear resets to empty preview', () {
+      c.insertDigit('5');
+      c.clear();
+      expect(textController.text, isEmpty);
+    });
+
+    test('insertDigit stops at maxLength', () {
+      final c2 = NumericKeyboardController(
+        textController: textController,
+        focusNode: focusNode,
+        maxLength: 4,
+      );
+      for (final d in ['1', '2', '3', '4']) {
+        c2.insertDigit(d);
+      }
+      expect(textController.text, '1234');
+      c2.insertDigit('5');
+      expect(textController.text, '1234');
+      c2.dispose();
+    });
+
+    test('insertDigit stops at digit limit implied by max', () {
+      final c2 = NumericKeyboardController(
+        textController: textController,
+        focusNode: focusNode,
+        maxValue: 59,
+        integersOnly: true,
+      );
+      c2.insertDigit('5');
+      c2.insertDigit('9');
+      expect(textController.text, '59');
+      c2.insertDigit('9');
+      expect(textController.text, '59');
+      c2.dispose();
+    });
+
+    test('insertDigit allows decimal when min needs fractional digits', () {
+      final c2 = NumericKeyboardController(
+        textController: textController,
+        focusNode: focusNode,
+        minValue: 0.5,
+        maxValue: 500,
+      );
+      c2.insertDigit('0');
       c2.insertDecimal();
-      expect(textController.text, '0');
+      c2.insertDigit('6');
+      expect(textController.text, '0.6');
       c2.dispose();
     });
 

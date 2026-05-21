@@ -57,6 +57,74 @@ void main() {
       expect(NumericRange.commitText('4.2', integersOnly: false), '4.2');
     });
 
+    test('validate empty when bounds are set', () {
+      expect(
+        NumericRange.validate('', min: 18, max: 60),
+        'Enter a number',
+      );
+    });
+
+    test('validate empty on Enter without bounds', () {
+      expect(
+        NumericRange.validate('', allowIncomplete: false),
+        'Enter a number',
+      );
+    });
+
+    test('canAcceptDigit respects maxLength', () {
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '1234',
+          digit: '5',
+          maxLength: 4,
+        ),
+        isFalse,
+      );
+    });
+
+    test('canAcceptDigit from zero replaces leading zero', () {
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '0',
+          digit: '7',
+          maxLength: 4,
+        ),
+        isTrue,
+      );
+    });
+
+    test('canAcceptDigit blocks extra whole digits for max 59', () {
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '59',
+          digit: '9',
+          max: 59,
+          integersOnly: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('canAcceptDigit allows 0.6 when min is 0.5 and max is 500', () {
+      expect(
+        NumericRange.fractionalDigitsForRange(min: 0.5, max: 500),
+        1,
+      );
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '0.',
+          digit: '6',
+          min: 0.5,
+          max: 500,
+        ),
+        isTrue,
+      );
+      expect(
+        NumericRange.validate('0.6', min: 0.5, max: 500),
+        isNull,
+      );
+    });
+
     test('defers validation while decimal is incomplete', () {
       expect(
         NumericRange.validate('3.', min: 3.1, max: 5.5, allowIncomplete: true),

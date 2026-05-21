@@ -282,6 +282,15 @@ class KeyboardController extends GetxController {
       return;
     }
 
+    // Mirror [toggleShift] when Caps one-shot + Shift: Shift on, then Caps → lock.
+    if (_isShiftActive.value) {
+      _capsOneShot.value = false;
+      _isCapsLock.value = true;
+      _isShiftActive.value = true;
+      _lastCapsTap = null;
+      return;
+    }
+
     if (_lastCapsTap != null &&
         now.difference(_lastCapsTap!) <= _capsDoubleTapWindow) {
       _lastCapsTap = null;
@@ -293,11 +302,7 @@ class KeyboardController extends GetxController {
 
     _lastCapsTap = now;
     final turningOff = _capsOneShot.value;
-    _isShiftActive.value = false;
     _capsOneShot.value = !turningOff;
-    if (turningOff) {
-      _isShiftActive.value = false;
-    }
   }
 
   void toggleNumeric() {
@@ -332,6 +337,19 @@ class KeyboardController extends GetxController {
   String? _computeEnterError() {
     if (!_canEdit) return null;
     final value = textController.text;
+    final trimmed = value.trim();
+
+    if (trimmed.isEmpty) {
+      if (validator != null) {
+        final err = validator!(value);
+        if (err != null) return err;
+      }
+      if (minLength != null) {
+        return 'At least $minLength characters';
+      }
+      return 'Enter a value';
+    }
+
     if (minLength != null && value.length < minLength!) {
       return 'At least $minLength characters';
     }
@@ -369,7 +387,7 @@ class KeyboardConstants {
       'BACKSPACE',
     ],
     ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', r'\'],
-    ['CAPS', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '"'],
+    ['CAPS', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '"','CLEAR'],
     [
       'SHIFT',
       'z',
@@ -406,7 +424,7 @@ class KeyboardConstants {
       'BACKSPACE',
     ],
     ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', r'\'],
-    ['CAPS', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', '"'],
+    ['CAPS', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', '"','CLEAR'],
     [
       'SHIFT',
       'Z',

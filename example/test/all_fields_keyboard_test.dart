@@ -54,17 +54,67 @@ void main() {
       expect(fieldText(tester, 'field_name'), isEmpty);
     });
 
-    testWidgets('Email opens QWERTY and commits text', (tester) async {
+    testWidgets('Email rejects invalid address on Enter', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_email');
+
+      await typeAlpha(tester, 'notemail');
+      await tapEnter(tester);
+
+      expect(find.text('Enter a valid email'), findsOneWidget);
+      expect(fieldText(tester, 'field_email'), isEmpty);
+    });
+
+    testWidgets('Email rejects empty preview on Enter', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_email');
+      await tapEnter(tester);
+
+      expect(find.text('Enter your email'), findsOneWidget);
+      expect(fieldText(tester, 'field_email'), isEmpty);
+    });
+
+    testWidgets('Email commits valid address on Enter', (tester) async {
       bindViewport(tester);
       await pumpKeyboardDemo(tester);
       await tapField(tester, 'field_email');
 
       expect(find.byType(CustomKeyboard), findsOneWidget);
-      await typeAlpha(tester, 'a');
-      await tapKeyLabel(tester, 't');
+      await typeAlpha(tester, 'user');
+      await tapShift(tester);
+      await tapKeyLabel(tester, '@');
+      await typeAlpha(tester, 'mail');
+      await tapKeyLabel(tester, '.');
+      await typeAlpha(tester, 'com');
       await tapEnter(tester);
 
-      expect(fieldText(tester, 'field_email'), 'at');
+      expect(fieldText(tester, 'field_email'), 'user@mail.com');
+    });
+
+    testWidgets('Memo blocks Enter when empty and keeps keyboard open',
+        (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_memo');
+      await tapEnter(tester);
+
+      expect(find.text('Enter a value'), findsOneWidget);
+      expect(fieldText(tester, 'field_memo'), isEmpty);
+      expect(find.byType(CustomKeyboard), findsOneWidget);
+    });
+
+    testWidgets('Phone blocks Enter when empty and keeps keyboard open',
+        (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_phone');
+      await tapEnter(tester);
+
+      expect(find.text('Enter a number'), findsOneWidget);
+      expect(fieldText(tester, 'field_phone'), isEmpty);
+      expect(find.byType(NumericKeyboard), findsOneWidget);
     });
 
     testWidgets('Memo opens QWERTY and commits text', (tester) async {
@@ -87,6 +137,19 @@ void main() {
     void bindViewport(WidgetTester tester) {
       addTearDown(() => resetTestViewport(tester));
     }
+
+    testWidgets('Age preview empty until a digit is tapped', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_age');
+
+      final preview = tester.widget<TextField>(
+        find.byKey(const ValueKey<String>('numericKeyboardPreview')),
+      );
+      expect(preview.controller!.text, isEmpty);
+      await tapKeyLabel(tester, '2');
+      expect(preview.controller!.text, '2');
+    });
 
     testWidgets('Age opens numeric pad with min/max hints', (tester) async {
       bindViewport(tester);
@@ -202,6 +265,21 @@ void main() {
       await typeDigits(tester, '4');
       await tapEnter(tester);
       expect(fieldText(tester, 'field_pin'), '1234');
+    });
+
+    testWidgets('Access code blocks 5th digit while typing', (tester) async {
+      bindViewport(tester);
+      await pumpKeyboardDemo(tester);
+      await tapField(tester, 'field_pin');
+
+      final preview = tester.widget<TextField>(
+        find.byKey(const ValueKey<String>('numericKeyboardPreview')),
+      );
+      await typeDigits(tester, '1234');
+      expect(preview.controller!.text, '1234');
+
+      await tapKeyLabel(tester, '5');
+      expect(preview.controller!.text, '1234');
     });
 
     testWidgets('Amount commits in range on Enter', (tester) async {

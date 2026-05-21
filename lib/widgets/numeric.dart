@@ -31,6 +31,9 @@ class NumericKeyboard extends StatefulWidget {
   /// When true, only whole numbers are accepted (range min/max still applies).
   final bool integersOnly;
 
+  /// Maximum characters in the preview (e.g. 4 for an access code).
+  final int? maxLength;
+
   /// Called when the user taps close (X) or the host dismisses the panel.
   final VoidCallback onDismiss;
 
@@ -51,6 +54,7 @@ class NumericKeyboard extends StatefulWidget {
     this.maxValue,
     this.allowDecimalInput = true,
     this.integersOnly = false,
+    this.maxLength,
     required this.onDismiss,
     this.keyboardTheme,
   });
@@ -139,10 +143,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     });
   }
 
-  String _seedText(String committed) {
-    if (committed.isEmpty) return '0';
-    return committed;
-  }
+  String _seedText(String committed) => committed;
 
   void _initController() {
     final tag = widget.focusNode.hashCode.toString();
@@ -153,6 +154,10 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         previewFocusNode: _previewFocusNode,
         validator: _combinedValidate,
         allowDecimalInput: widget.allowDecimalInput,
+        integersOnly: widget.integersOnly,
+        minValue: widget.minValue,
+        maxValue: widget.maxValue,
+        maxLength: widget.maxLength,
       );
     } else {
       _keyboardController = NumericKeyboardController(
@@ -161,6 +166,10 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         previewFocusNode: _previewFocusNode,
         validator: _combinedValidate,
         allowDecimalInput: widget.allowDecimalInput,
+        integersOnly: widget.integersOnly,
+        minValue: widget.minValue,
+        maxValue: widget.maxValue,
+        maxLength: widget.maxLength,
       );
       Get.put(_keyboardController, tag: tag);
     }
@@ -220,12 +229,19 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
       _reseedStagingFromCommitted();
     }
     if (widget.allowDecimalInput != oldWidget.allowDecimalInput ||
-        widget.integersOnly != oldWidget.integersOnly) {
+        widget.integersOnly != oldWidget.integersOnly ||
+        widget.maxLength != oldWidget.maxLength ||
+        widget.minValue != oldWidget.minValue ||
+        widget.maxValue != oldWidget.maxValue) {
       _keyboardController.rebind(
         textController: _inputController,
         previewFocusNode: _previewFocusNode,
         validator: _combinedValidate,
         allowDecimalInput: widget.allowDecimalInput,
+        integersOnly: widget.integersOnly,
+        minValue: widget.minValue,
+        maxValue: widget.maxValue,
+        maxLength: widget.maxLength,
       );
       setState(() {});
     }
@@ -603,7 +619,9 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   Widget _decimalKey(KeyboardTheme theme) {
     return NumericKey(
       theme: theme,
-      onTap: () => _runKeyAction(_keyboardController.insertDecimal),
+      onTap: () => _runKeyAction(() {
+        _keyboardController.insertDecimal();
+      }),
       isSpecial: true,
       child: Text(
         '.',
@@ -641,7 +659,10 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
             strictValidator: (value) =>
                 _combinedValidate(value, allowIncomplete: false),
           );
-          if (!success) return;
+          if (!success) {
+            _retainPreviewFocus();
+            return;
+          }
 
           if (widget.commitOnEnterOnly) {
             final committed = _commitText(_inputController.text);

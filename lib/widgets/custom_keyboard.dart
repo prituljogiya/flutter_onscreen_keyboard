@@ -512,7 +512,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
 
     switch (key) {
       case 'SHIFT':
-        isSpecial = true;
+        isSpecial = false;
         isActive = _keyboardController.isShiftActive;
         width = 76;
         onTap = () {
@@ -520,7 +520,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         };
         break;
       case 'CAPS':
-        isSpecial = true;
+        isSpecial = false;
         isActive =
             _keyboardController.isCapsLock || _keyboardController.isCapsOneShot;
         isSubActive = _keyboardController.isCapsLock;
@@ -530,14 +530,14 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         };
         break;
       case 'BACKSPACE':
-        isSpecial = true;
+        isSpecial = false;
         width = 56;
         onTap = () {
           _runKeyAction(_keyboardController.backspace);
         };
         break;
       case 'ENTER':
-        isSpecial = true;
+        isSpecial = false;
         isWide = false;
         width = 240;
         onTap = () {
@@ -577,20 +577,21 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
           _runKeyAction(_keyboardController.toggleNumeric);
         };
         break;
-      case 'ABC':
-        isSpecial = true;
+      case 'CLEAR':
+        isSpecial = false;
+        width = 72;
         onTap = () {
-          _runKeyAction(_keyboardController.switchToAlpha);
+          _runKeyAction(_keyboardController.clear);
         };
         break;
       case 'LEFT ARROW':
-        isSpecial = true;
+        isSpecial = false;
         onTap = () {
           _runKeyAction(() => _keyboardController.moveCursor(-1));
         };
         break;
       case 'RIGHT ARROW':
-        isSpecial = true;
+        isSpecial = false;
         onTap = () {
           _runKeyAction(() => _keyboardController.moveCursor(1));
         };

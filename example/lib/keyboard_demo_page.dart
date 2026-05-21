@@ -112,6 +112,9 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
     return null;
   }
 
+  String? _emailValidator(String value) =>
+      OnscreenKeyboardValidators.email(value);
+
   String? _usernameValidator(String value) {
     if (value.isEmpty) return null;
     if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
@@ -140,7 +143,8 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
           const SizedBox(height: 6),
           Text(
             'QWERTY with Shift, Caps (single / double-tap lock), cursor keys, and '
-            'Enter-to-commit preview. Name enforces length; username adds a custom validator.',
+            'Enter-to-commit preview. Name enforces length; email and username '
+            'use validators on Enter.',
             style: _sectionSubtitle(context),
           ),
           const SizedBox(height: 12),
@@ -163,9 +167,10 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
             controller: _emailController,
             focusNode: _emailFocus,
             keyboardType: TextInputType.emailAddress,
+            validator: _emailValidator,
             decoration: const InputDecoration(
               labelText: 'Email',
-              hintText: 'Preview, then Enter',
+              hintText: 'Valid email required on Enter',
               border: OutlineInputBorder(),
             ),
           ),
@@ -307,6 +312,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
             controller: _pinController,
             focusNode: _pinFocus,
             keyboardType: TextInputType.number,
+            maxLength: 4,
             validator: _pinValidator,
             decoration: const InputDecoration(
               labelText: 'Access code',

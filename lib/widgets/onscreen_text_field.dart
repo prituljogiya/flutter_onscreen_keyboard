@@ -7,7 +7,7 @@ import 'onscreen_keyboard_host.dart';
 /// Text field that uses the on-screen custom keyboard when
 /// [OnscreenKeyboardConfig.useCustomKeyboard] is true; otherwise behaves like a
 /// normal [TextField] with the system keyboard.
-class OnscreenTextField extends StatelessWidget {
+class OnscreenTextField extends StatefulWidget {
   const OnscreenTextField({
     super.key,
     this.fieldKey,
@@ -49,49 +49,88 @@ class OnscreenTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
 
+  @override
+  State<OnscreenTextField> createState() => _OnscreenTextFieldState();
+}
+
+class _OnscreenTextFieldState extends State<OnscreenTextField> {
   OnscreenFieldSession get _session => OnscreenFieldSession(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: keyboardType,
-        minLength: minLength,
-        maxLength: maxLength,
-        minValue: minValue,
-        maxValue: maxValue,
-        allowDecimalInput: allowDecimalInput,
-        integersOnly: integersOnly,
-        validator: validator,
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        keyboardType: widget.keyboardType,
+        minLength: widget.minLength,
+        maxLength: widget.maxLength,
+        minValue: widget.minValue,
+        maxValue: widget.maxValue,
+        allowDecimalInput: widget.allowDecimalInput,
+        integersOnly: widget.integersOnly,
+        validator: widget.validator,
       );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!useCustomOnscreenKeyboard) return;
+    _syncFocusPolicy(context);
+  }
+
+  void _syncFocusPolicy(BuildContext context) {
+    final scope =
+        context.dependOnInheritedWidgetOfExactType<OnscreenKeyboardScope>();
+    final blocked = scope != null &&
+        scope.hasOpenKeyboard &&
+        !scope.isOpenFor(widget.focusNode);
+
+    widget.focusNode.canRequestFocus = !blocked;
+    if (blocked && widget.focusNode.hasFocus) {
+      widget.focusNode.unfocus();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     if (!useCustomOnscreenKeyboard) {
       return TextField(
-        key: fieldKey,
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: keyboardType,
-        decoration: decoration,
-        maxLines: maxLines,
-        maxLength: maxLength,
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
+        key: widget.fieldKey,
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        keyboardType: widget.keyboardType,
+        decoration: widget.decoration,
+        maxLines: widget.maxLines,
+        maxLength: widget.maxLength,
+        onChanged: widget.onChanged,
+        onSubmitted: widget.onSubmitted,
       );
     }
 
-    return TextField(
-      key: fieldKey,
-      controller: controller,
-      focusNode: focusNode,
-      keyboardType: keyboardType,
+    final scope =
+        context.dependOnInheritedWidgetOfExactType<OnscreenKeyboardScope>();
+    final blocked = scope != null &&
+        scope.hasOpenKeyboard &&
+        !scope.isOpenFor(widget.focusNode);
+
+    final field = TextField(
+      key: widget.fieldKey,
+      controller: widget.controller,
+      focusNode: widget.focusNode,
+      keyboardType: widget.keyboardType,
       readOnly: true,
-      showCursor: showCursor,
-      maxLines: maxLines,
-      maxLength: maxLength,
-      onTap: () {
-        if (OnscreenKeyboardHost.isOpenFor(context, focusNode)) return;
-        OnscreenKeyboardHost.activate(context, _session);
-      },
-      decoration: decoration,
+      showCursor: widget.showCursor && !blocked,
+      maxLines: widget.maxLines,
+      maxLength: widget.maxLength,
+      onTap: blocked
+          ? null
+          : () {
+              if (OnscreenKeyboardHost.isOpenFor(context, widget.focusNode)) {
+                return;
+              }
+              OnscreenKeyboardHost.activate(context, _session);
+            },
+      decoration: widget.decoration,
     );
+
+    if (!blocked) return field;
+
+    return AbsorbPointer(child: field);
   }
 }

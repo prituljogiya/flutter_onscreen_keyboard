@@ -33,7 +33,7 @@ class OnscreenKeyboardHost extends StatefulWidget {
   /// Opens the on-screen keyboard for [session] (used by [OnscreenTextField]).
   static void activate(BuildContext context, OnscreenFieldSession session) {
     final scope =
-        context.getInheritedWidgetOfExactType<_OnscreenKeyboardScope>();
+        context.getInheritedWidgetOfExactType<OnscreenKeyboardScope>();
     if (scope != null) {
       scope.state._activate(session);
       return;
@@ -46,14 +46,21 @@ class OnscreenKeyboardHost extends StatefulWidget {
   /// Whether the keyboard is open for [focusNode].
   static bool isOpenFor(BuildContext context, FocusNode focusNode) {
     final scope =
-        context.getInheritedWidgetOfExactType<_OnscreenKeyboardScope>();
-    return scope?.state.isOpenFor(focusNode) ?? false;
+        context.getInheritedWidgetOfExactType<OnscreenKeyboardScope>();
+    return scope?.isOpenFor(focusNode) ?? false;
+  }
+
+  /// True while a field session is active (keyboard visible).
+  static bool isOpen(BuildContext context) {
+    final scope =
+        context.getInheritedWidgetOfExactType<OnscreenKeyboardScope>();
+    return scope?.hasOpenKeyboard ?? false;
   }
 
   /// Hides the keyboard panel (used by preview close buttons).
   static void dismiss(BuildContext context) {
     final scope =
-        context.getInheritedWidgetOfExactType<_OnscreenKeyboardScope>();
+        context.getInheritedWidgetOfExactType<OnscreenKeyboardScope>();
     if (scope != null) {
       scope.state._dismiss();
       return;
@@ -67,24 +74,33 @@ class OnscreenKeyboardHost extends StatefulWidget {
   State<OnscreenKeyboardHost> createState() => _OnscreenKeyboardHostState();
 }
 
-class _OnscreenKeyboardScope extends InheritedWidget {
-  const _OnscreenKeyboardScope({
+/// Notifies [OnscreenTextField] when the active keyboard session changes.
+class OnscreenKeyboardScope extends InheritedWidget {
+  const OnscreenKeyboardScope({
     required this.state,
+    required this.session,
     required super.child,
   });
 
   final _OnscreenKeyboardHostState state;
+  final OnscreenFieldSession? session;
+
+  bool get hasOpenKeyboard => session != null;
+
+  bool isOpenFor(FocusNode focusNode) => session?.focusNode == focusNode;
 
   @override
-  bool updateShouldNotify(_OnscreenKeyboardScope oldWidget) => false;
+  bool updateShouldNotify(OnscreenKeyboardScope oldWidget) {
+    return oldWidget.session?.focusNode != session?.focusNode ||
+        (oldWidget.session == null) != (session == null);
+  }
 }
 
 class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
   OnscreenFieldSession? _session;
   final GlobalKey _alphaKeyboardKey = GlobalKey(debugLabel: 'alphaKeyboard');
 
-  /// Scroll offset of [child] before the keyboard shrinks the viewport (portrait).
-  ScrollPosition? _hostScrollPosition;
+  /// Form scroll offset captured when the keyboard opens (restored on close).
   double? _hostScrollOffsetBeforeKeyboard;
 
   bool isOpenFor(FocusNode focusNode) => _session?.focusNode == focusNode;
@@ -94,22 +110,24 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
     if (ctx == null) return;
     final scrollable = Scrollable.maybeOf(ctx);
     if (scrollable == null) return;
-    _hostScrollPosition = scrollable.position;
     _hostScrollOffsetBeforeKeyboard = scrollable.position.pixels;
   }
 
-  void _restoreHostScrollAfterDismiss() {
-    final position = _hostScrollPosition;
-    final offset = _hostScrollOffsetBeforeKeyboard;
-    _hostScrollPosition = null;
+  void _restoreHostScrollAfterDismiss(FocusNode fieldFocus, double? offset) {
     _hostScrollOffsetBeforeKeyboard = null;
-    if (position == null || offset == null) return;
+    if (offset == null) return;
 
     void apply() {
-      if (!mounted || !position.hasContentDimensions) return;
-      final target = offset.clamp(0.0, position.maxScrollExtent);
-      if ((position.pixels - target).abs() > 0.5) {
-        position.jumpTo(target);
+      if (!mounted) return;
+      final ctx = fieldFocus.context;
+      if (ctx == null) return;
+      final scrollable = Scrollable.maybeOf(ctx);
+      if (scrollable == null || !scrollable.position.hasContentDimensions) {
+        return;
+      }
+      final target = offset.clamp(0.0, scrollable.position.maxScrollExtent);
+      if ((scrollable.position.pixels - target).abs() > 0.5) {
+        scrollable.position.jumpTo(target);
       }
     }
 
@@ -125,12 +143,13 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       return;
     }
 
-    final previous = _session;
-    if (previous != null &&
-        previous.focusNode.hashCode != session.focusNode.hashCode) {
-      clearOnscreenKeyboardValidation(previous.focusNode);
+    // While the keyboard is open, stay on the active field until it is closed.
+    if (_session != null &&
+        _session!.focusNode.hashCode != session.focusNode.hashCode) {
+      return;
     }
 
+    final previous = _session;
     session.focusNode.requestFocus();
 
     if (_session == null) {
@@ -148,6 +167,8 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
     if (!mounted || _session == null) return;
 
     final previous = _session!;
+    final scrollOffset = _hostScrollOffsetBeforeKeyboard;
+    final fieldFocus = previous.focusNode;
     setState(() => _session = null);
 
     clearOnscreenKeyboardValidation(previous.focusNode);
@@ -158,7 +179,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       primary.unfocus();
     }
 
-    _restoreHostScrollAfterDismiss();
+    _restoreHostScrollAfterDismiss(fieldFocus, scrollOffset);
 
     widget.onTapOutside?.call();
   }
@@ -180,11 +201,23 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
     final useDraggable =
         isLandscape && widget.useDraggableInLandscape;
 
-    return _OnscreenKeyboardScope(
-      state: this,
-      child: useDraggable
-          ? _buildDraggableShell(session)
-          : _buildPortraitShell(session),
+    return PopScope(
+      canPop: session == null,
+      child: OnscreenKeyboardScope(
+        state: this,
+        session: session,
+        child: useDraggable
+            ? _buildDraggableShell(session)
+            : _buildPortraitShell(session),
+      ),
+    );
+  }
+
+  Widget _wrapLockedContent(Widget child) {
+    if (_session == null) return child;
+    return ScrollConfiguration(
+      behavior: const _LockScrollWhileKeyboardBehavior(),
+      child: child,
     );
   }
 
@@ -203,7 +236,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       numericAllowDecimalInput: session.showDecimalKey,
       numericIntegersOnly: session.integersOnlyValidation,
       minLength: session.useNumericKeyboard ? null : session.minLength,
-      maxLength: session.useNumericKeyboard ? null : session.maxLength,
+      maxLength: session.maxLength,
       validator: session.validator,
       widthFactor: widget.draggableWidthFactor,
       heightFactor: widget.draggableHeightFactor,
@@ -212,7 +245,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       pushContent: false,
       onDismiss: _dismiss,
       onEnterPressed: _onEnter,
-      child: widget.child,
+      child: _wrapLockedContent(widget.child),
     );
   }
 
@@ -221,7 +254,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       onTapOutside: (_) => _dismiss(),
       child: Column(
         children: [
-          Expanded(child: widget.child),
+          Expanded(child: _wrapLockedContent(widget.child)),
           if (session != null) _buildActiveKeyboard(session),
         ],
       ),
@@ -233,7 +266,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       return RepaintBoundary(
         child: NumericKeyboard(
           key: ValueKey<String>(
-            'nk_${session.focusNode.hashCode}_${session.showDecimalKey}_${session.integersOnlyValidation}',
+            'nk_${session.focusNode.hashCode}_${session.showDecimalKey}_${session.integersOnlyValidation}_${session.maxLength}',
           ),
           controller: session.controller,
           focusNode: session.focusNode,
@@ -242,6 +275,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
           maxValue: session.maxValue,
           allowDecimalInput: session.showDecimalKey,
           integersOnly: session.integersOnlyValidation,
+          maxLength: session.maxLength,
           validator: session.validator,
           onDismiss: _dismiss,
           onEnterPressed: _onEnter,
@@ -262,5 +296,15 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
         onEnterPressed: _onEnter,
       ),
     );
+  }
+}
+
+/// Disables form scrolling while the on-screen keyboard is open.
+class _LockScrollWhileKeyboardBehavior extends ScrollBehavior {
+  const _LockScrollWhileKeyboardBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const NeverScrollableScrollPhysics();
   }
 }

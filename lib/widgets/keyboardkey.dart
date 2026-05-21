@@ -11,6 +11,7 @@ class KeyboardKey extends StatefulWidget {
   final bool enableHoldRepeat;
   final bool isSpecial;
   final bool isActive;
+
   /// Second-level Caps state (e.g. accent border).
   final bool isSubActive;
   final bool isWide;
@@ -61,9 +62,7 @@ class _KeyboardKeyState extends State<KeyboardKey>
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.94,
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -208,17 +207,34 @@ class _KeyboardKeyState extends State<KeyboardKey>
     } else if (widget.label == 'RIGHT ARROW') {
       keyContent = Icon(Icons.arrow_forward, color: textColor, size: 20);
     } else if (widget.label == 'SHIFT') {
-      keyContent = Icon(Icons.arrow_upward, color: textColor, size: 22);
+      keyContent = Text(
+        'Shift',
+        style: TextStyle(
+          color: textColor,
+          fontSize: widget.theme.fontSize - 1,
+          fontWeight: FontWeight.normal,
+        ),
+      );
     } else if (widget.label == 'CAPS') {
       keyContent = Text(
         'Caps',
         style: TextStyle(
           color: textColor,
           fontSize: widget.theme.fontSize - 1,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.normal,
         ),
       );
-    } else if (widget.label == 'SPACE') {
+    }else if (widget.label == 'CLEAR') {
+      keyContent = Text(
+        'Clear',
+        style: TextStyle(
+          color: textColor,
+          fontSize: widget.theme.fontSize - 1,
+          fontWeight: FontWeight.normal,
+        ),
+      );
+    }
+    else if (widget.label == 'SPACE') {
       keyContent = Container(
         width: double.infinity,
         height: 4,
@@ -268,46 +284,44 @@ class _KeyboardKeyState extends State<KeyboardKey>
             ? _handleLongPress
             : null,
         child: Container(
-            width: widget.width,
-            height: widget.height ?? widget.width ?? 48,
-            margin: EdgeInsets.all(widget.theme.keySpacing / 2),
-            decoration: BoxDecoration(
-              gradient: gradient,
-              color: gradient == null ? bgColor : null,
-              borderRadius: BorderRadius.circular(widget.theme.borderRadius),
-              border: Border.all(
-                color: _isPressed
-                    ? widget.theme.keyPressedColor
-                    : widget.isActive
-                        ? widget.theme.activeKeyColor
-                        : widget.isSubActive
-                            ? const Color(0xFFFFB74D)
-                            : widget.theme.keyBorderColor,
-                width: (_isPressed ||
-                        widget.isSubActive ||
-                        widget.isActive)
-                    ? 2.2
-                    : widget.theme.keyBorderWidth,
-              ),
-              boxShadow: _isPressed
-                  ? [
-                      BoxShadow(
-                        color: widget.theme.shadowColor.withOpacity(0.3),
-                        blurRadius: 2,
-                        offset: const Offset(0, 1),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: widget.theme.shadowColor.withOpacity(0.4),
-                        blurRadius: widget.theme.keyElevation * 2,
-                        offset: Offset(0, widget.theme.keyElevation),
-                      ),
-                    ],
+          width: widget.width,
+          height: widget.height ?? widget.width ?? 48,
+          margin: EdgeInsets.all(widget.theme.keySpacing / 2),
+          decoration: BoxDecoration(
+            gradient: gradient,
+            color: gradient == null ? bgColor : null,
+            borderRadius: BorderRadius.circular(widget.theme.borderRadius),
+            border: Border.all(
+              color: _isPressed
+                  ? widget.theme.keyPressedColor
+                  : widget.isActive
+                  ? widget.theme.activeKeyColor
+                  : widget.isSubActive
+                  ? const Color(0xFFFFB74D)
+                  : widget.theme.keyBorderColor,
+              width: (_isPressed || widget.isSubActive || widget.isActive)
+                  ? 2.2
+                  : widget.theme.keyBorderWidth,
             ),
-            alignment: Alignment.center,
-            child: keyContent,
+            boxShadow: _isPressed
+                ? [
+                    BoxShadow(
+                      color: widget.theme.shadowColor.withOpacity(0.3),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: widget.theme.shadowColor.withOpacity(0.4),
+                      blurRadius: widget.theme.keyElevation * 2,
+                      offset: Offset(0, widget.theme.keyElevation),
+                    ),
+                  ],
           ),
+          alignment: Alignment.center,
+          child: keyContent,
+        ),
       ),
     );
   }

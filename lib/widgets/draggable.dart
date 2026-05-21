@@ -394,6 +394,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                 maxValue: widget.numericMaxValue,
                 allowDecimalInput: widget.numericAllowDecimalInput,
                 integersOnly: widget.numericIntegersOnly,
+                maxLength: widget.maxLength,
                 onDismiss: widget.onDismiss,
                 keyboardTheme: theme,
               )

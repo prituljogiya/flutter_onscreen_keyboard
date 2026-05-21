@@ -102,6 +102,12 @@ Future<void> typeNumber(WidgetTester tester, String value) async {
   }
 }
 
+Future<void> tapShift(WidgetTester tester) async {
+  await tester.tap(find.byIcon(Icons.arrow_upward).last);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 260));
+}
+
 Future<void> tapEnter(WidgetTester tester) async {
   await tapKeyLabel(tester, 'Enter');
   await tester.pumpAndSettle();
