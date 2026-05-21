@@ -227,6 +227,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
     }
 
     return DraggableDynamicKeyboard(
+      key: ValueKey<String>('drag_kb_${session.focusNode.hashCode}'),
       controller: session.controller,
       focusNode: session.focusNode,
       commitOnEnterOnly: widget.commitOnEnterOnly,

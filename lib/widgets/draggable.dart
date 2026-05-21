@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+
 import '../core/keyboard_theme_resolver.dart';
 import '../core/theme_controller.dart';
 import 'custom_keyboard.dart';
 import 'numeric.dart';
+
 class DraggableDynamicKeyboard extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -75,34 +76,58 @@ class DraggableDynamicKeyboard extends StatefulWidget {
 }
 
 class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
-  late Offset _position;
+  static const double _edgeInset = 8.0;
+  static const double _dragHandleHeight = 30.0;
+
+  Offset _position = Offset.zero;
 
   final ValueNotifier<Offset> _positionNotifier = ValueNotifier(Offset.zero);
 
   bool _isVisible = false;
 
+  /// Avoid showing the panel at [initialPosition] before layout centers it.
+  bool _positionReady = false;
+
   double _panMinX = 0;
   double _panMaxX = 0;
   double _panMinY = 0;
   double _panMaxY = 0;
-  bool _hasPositionedInitially = false;
   Size _layoutArea = Size.zero;
 
-  late Widget _keyboardPanel;
+  Size _keyboardSizeForArea(Size area) {
+    if (widget.useNumericKeyboard) {
+      final width = (area.width * widget.widthFactor)
+          .clamp(260.0, area.width - 24)
+          .toDouble();
+      final height = (area.height * widget.heightFactor)
+          .clamp(220.0, area.height - 24)
+          .toDouble();
+      return Size(width, height);
+    }
+
+    final width = widget.fullWidthInLandscape
+        ? area.width
+        : (area.width * widget.widthFactor)
+            .clamp(280.0, area.width - 24)
+            .toDouble();
+    final height = (area.height * widget.heightFactor)
+        .clamp(180.0, area.height - 24)
+        .toDouble();
+    return Size(width, height);
+  }
 
   @override
   void initState() {
     super.initState();
 
-    _position = widget.initialPosition;
-    _positionNotifier.value = _position;
-
     widget.focusNode.addListener(_onFocusChange);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_isVisible || widget.alwaysVisible) {
-        _ensureKeyboardVisible();
-      }
-    });
+    _isVisible = widget.alwaysVisible;
+
+    if (_isVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _ensureKeyboardVisible();
+      });
+    }
   }
 
   @override
@@ -112,200 +137,75 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
     if (oldWidget.focusNode != widget.focusNode) {
       oldWidget.focusNode.removeListener(_onFocusChange);
       widget.focusNode.addListener(_onFocusChange);
+      _positionReady = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _ensureKeyboardVisible();
+      });
     }
   }
 
   void _onFocusChange() {
     final visible = widget.alwaysVisible || widget.focusNode.hasFocus;
 
-    if (_isVisible != visible) {
-      setState(() {
-        _isVisible = visible;
-      });
+    if (_isVisible == visible) return;
 
-      if (visible) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _ensureKeyboardVisible();
-        });
-      }
+    setState(() => _isVisible = visible);
+
+    if (visible) {
+      _positionReady = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _ensureKeyboardVisible();
+      });
     }
   }
-
-  //
-  //
-  // //
-  // void _ensureKeyboardVisible() {
-  //   final keyboardWidth = widget.useNumericKeyboard
-  //       ? 360.0
-  //       : _keyboardWidthForScreen(_layoutArea);
-  //
-  //   final keyboardHeight = widget.useNumericKeyboard
-  //       ? 400.0
-  //       : _keyboardHeightForScreen(_layoutArea);
-  //
-  //   const padding = 12.0;
-  //
-  //   final maxX = (_layoutArea.width - keyboardWidth - padding).clamp(
-  //     padding,
-  //     double.infinity,
-  //   );
-  //
-  //   final maxY = (_layoutArea.height - keyboardHeight - padding).clamp(
-  //     padding,
-  //     double.infinity,
-  //   );
-  //
-  //
-  //   /// FIRST TIME → OPEN IN CENTER
-  //   if (!_hasPositionedInitially) {
-  //     _hasPositionedInitially = true;
-  //
-  //     _position = Offset(
-  //       (_layoutArea.width - keyboardWidth) / 2,
-  //       (_layoutArea.height - keyboardHeight) / 2,
-  //     );
-  //
-  //     _positionNotifier.value = _position;
-  //     return;
-  //   }
-  //
-  //   /// If keyboard is outside screen,
-  //   /// reposition it automatically.
-  //   final shouldResetPosition =
-  //       _position.dy > maxY || _position.dx > maxX;
-  //
-  //   if (shouldResetPosition) {
-  //     _position = Offset(padding, maxY.toDouble());
-  //
-  //     _positionNotifier.value = _position;
-  //     return;
-  //   }
-  //
-  //   final corrected = Offset(
-  //     _position.dx.clamp(padding, maxX).toDouble(),
-  //     _position.dy.clamp(padding, maxY).toDouble(),
-  //   );
-  //
-  //   if (corrected != _position) {
-  //     _position = corrected;
-  //     _positionNotifier.value = corrected;
-  //   }
-  // //   /// If keyboard is outside screen,
-  // //   /// reposition it automatically.
-  // //   final shouldResetPosition = _position.dy > maxY || _position.dx > maxX;
-  // //
-  // //   if (shouldResetPosition) {
-  // //     _position = Offset(padding, maxY.toDouble());
-  // //
-  // //     _positionNotifier.value = _position;
-  // //     return;
-  // //   }
-  // //
-  // //   final corrected = Offset(
-  // //     _position.dx.clamp(padding, maxX).toDouble(),
-  // //     _position.dy.clamp(padding, maxY).toDouble(),
-  // //   );
-  // //
-  // //   if (corrected != _position) {
-  // //     _position = corrected;
-  // //     _positionNotifier.value = corrected;
-  // //   }
-  // // }
 
   void _ensureKeyboardVisible() {
-    final keyboardWidth = widget.useNumericKeyboard ? 207.0 : 761.0;
+    if (_layoutArea.width <= 0 || _layoutArea.height <= 0) return;
 
-    final keyboardHeight = widget.useNumericKeyboard ? 400.0 : 327.0;
-
+    final size = _keyboardSizeForArea(_layoutArea);
     const padding = 12.0;
 
-    final maxX = (_layoutArea.width - keyboardWidth - padding).clamp(
-      padding,
-      double.infinity,
-    );
+    final maxX = (_layoutArea.width - size.width - padding)
+        .clamp(padding, double.infinity)
+        .toDouble();
+    final maxY = (_layoutArea.height - size.height - padding)
+        .clamp(padding, double.infinity)
+        .toDouble();
 
-    final maxY = (_layoutArea.height - keyboardHeight - padding).clamp(
-      padding,
-      double.infinity,
-    );
+    final offScreen = _position.dx < padding - 0.5 ||
+        _position.dy < padding - 0.5 ||
+        _position.dx > maxX + 0.5 ||
+        _position.dy > maxY + 0.5;
 
-    /// FIRST TIME → OPEN IN CENTER
-    if (!_hasPositionedInitially) {
-      _hasPositionedInitially = true;
-
+    if (!_positionReady || offScreen) {
       _position = Offset(
-        (_layoutArea.width - keyboardWidth) / 2,
-        (_layoutArea.height - keyboardHeight) / 2,
+        ((_layoutArea.width - size.width) / 2).clamp(padding, maxX).toDouble(),
+        ((_layoutArea.height - size.height) / 2)
+            .clamp(padding, maxY)
+            .toDouble(),
       );
-
-      _positionNotifier.value = _position;
-      return;
+    } else {
+      _position = Offset(
+        _position.dx.clamp(padding, maxX).toDouble(),
+        _position.dy.clamp(padding, maxY).toDouble(),
+      );
     }
 
-    /// If keyboard is outside screen,
-    /// reposition it automatically.
-    final shouldResetPosition = _position.dy > maxY || _position.dx > maxX;
-
-    if (shouldResetPosition) {
-      _position = Offset(padding, maxY.toDouble());
-
-      _positionNotifier.value = _position;
-      return;
-    }
-
-    final corrected = Offset(
-      _position.dx.clamp(padding, maxX).toDouble(),
-      _position.dy.clamp(padding, maxY).toDouble(),
-    );
-
-    if (corrected != _position) {
-      _position = corrected;
-      _positionNotifier.value = corrected;
-    }
-  }
-
-  void _cachePanBounds() {
-    final area = _layoutArea;
-
-    final keyboardWidth = widget.useNumericKeyboard ? 207.0 : 761.0;
-
-    final keyboardHeight = widget.useNumericKeyboard ? 366.0 : 327.0;
-
-    const minX = 8.0;
-    const minY = 8.0;
-
-    _panMinX = minX;
-    _panMinY = minY;
-
-    _panMaxX = (area.width - keyboardWidth - 8).clamp(minX, double.infinity);
-
-    _panMaxY = (area.height - keyboardHeight - 8).clamp(minY, double.infinity);
-  }
-
-  void _handlePointerMove(PointerMoveEvent event) {
-    final nx =
-    (_position.dx + event.delta.dx).clamp(_panMinX, _panMaxX).toDouble();
-
-    final ny =
-    (_position.dy + event.delta.dy).clamp(_panMinY, _panMaxY).toDouble();
-
-    if (nx == _position.dx && ny == _position.dy) return;
-
-    _position = Offset(nx, ny);
-
+    _positionReady = true;
     _positionNotifier.value = _position;
+    _cachePanBounds(size);
   }
 
-  double _keyboardWidthForScreen(Size area) {
-    return (area.width * widget.widthFactor)
-        .clamp(280.0, area.width - 24)
-        .toDouble();
-  }
+  void _cachePanBounds([Size? keyboardSize]) {
+    final area = _layoutArea;
+    final size = keyboardSize ?? _keyboardSizeForArea(area);
 
-  double _keyboardHeightForScreen(Size area) {
-    return (area.height * widget.heightFactor)
-        .clamp(180.0, area.height - 24)
-        .toDouble();
+    _panMinX = _edgeInset;
+    _panMinY = _edgeInset;
+    _panMaxX =
+        (area.width - size.width - _edgeInset).clamp(_panMinX, double.infinity);
+    _panMaxY = (area.height - size.height - _edgeInset)
+        .clamp(_panMinY, double.infinity);
   }
 
   @override
@@ -317,139 +217,136 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
 
   @override
   Widget build(BuildContext context) {
-    Widget buildWithTheme(KeyboardTheme theme) {
-      return LayoutBuilder(
+    return buildKeyboardWithResolvedTheme(
+      widgetOverride: widget.keyboardTheme,
+      builder: (theme) => LayoutBuilder(
         builder: (context, constraints) {
-          _layoutArea = Size(constraints.maxWidth, constraints.maxHeight);
+          final newArea =
+              Size(constraints.maxWidth, constraints.maxHeight);
+          final areaChanged = newArea != _layoutArea;
+          _layoutArea = newArea;
 
-          _cachePanBounds();
+          if (areaChanged && (_isVisible || widget.alwaysVisible)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _ensureKeyboardVisible();
+            });
+          }
 
-          final keyboardWidth = widget.useNumericKeyboard ? 220.0 : 761.0;
-
-          final keyboardHeight = widget.useNumericKeyboard ? 366.0 : 327.0;
-
-          _keyboardPanel = RepaintBoundary(
-            child: _buildKeyboardPanel(theme, keyboardWidth, keyboardHeight),
+          final keyboardSize = _keyboardSizeForArea(_layoutArea);
+          final keyboardPanel = RepaintBoundary(
+            child: _buildKeyboardPanel(theme, keyboardSize),
           );
 
+          final showPanel =
+              (_isVisible || widget.alwaysVisible) && _positionReady;
+
           return Stack(
+            clipBehavior: Clip.none,
             children: [
               widget.child,
-              if (_isVisible || widget.alwaysVisible)
+              if (showPanel)
                 ValueListenableBuilder<Offset>(
                   valueListenable: _positionNotifier,
                   builder: (context, position, _) {
                     return Positioned(
                       left: position.dx,
                       top: position.dy,
-                      child: Listener(
-                        child: _keyboardPanel,
-                      ),
+                      child: keyboardPanel,
                     );
                   },
                 ),
             ],
           );
         },
-      );
-    }
-
-    return buildKeyboardWithResolvedTheme(
-      widgetOverride: widget.keyboardTheme,
-      builder: buildWithTheme,
+      ),
     );
   }
 
-  Widget _buildKeyboardPanel(KeyboardTheme theme,
-      double keyboardWidth,
-      double keyboardHeight,) {
+  Widget _buildKeyboardPanel(KeyboardTheme theme, Size keyboardSize) {
+    final panelHeight = keyboardSize.height;
+    final keysHeight = panelHeight - _dragHandleHeight;
+
     return Material(
       color: Colors.transparent,
-
-      /// FIXED ELEVATION
       elevation: 1,
-
       borderRadius: BorderRadius.circular(16),
-
-      child: Container(
-        width: keyboardWidth,
-        height: keyboardHeight,
-        decoration: BoxDecoration(
-          color: theme.backgroundColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: widget.useNumericKeyboard
-                  ? NumericKeyboard(
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                onEnterPressed: widget.onEnterPressed,
-                onSubmitted: widget.onSubmitted,
-                validator: widget.validator,
-                commitOnEnterOnly: widget.commitOnEnterOnly,
-                height: keyboardHeight,
-                minValue: widget.numericMinValue,
-                maxValue: widget.numericMaxValue,
-                allowDecimalInput: widget.numericAllowDecimalInput,
-                integersOnly: widget.numericIntegersOnly,
-                maxLength: widget.maxLength,
-                onDismiss: widget.onDismiss,
-                keyboardTheme: theme,
-              )
-                  : CustomKeyboard(
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                onEnterPressed: widget.onEnterPressed,
-                onSubmitted: widget.onSubmitted,
-                validator: widget.validator,
-                commitOnEnterOnly: widget.commitOnEnterOnly,
-                height: keyboardHeight,
-                maxLength: widget.maxLength,
-                minLength: widget.minLength,
-                onDismiss: widget.onDismiss,
-                keyboardTheme: theme,
+      child: SizedBox(
+        width: keyboardSize.width,
+        height: panelHeight,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.backgroundColor,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: widget.useNumericKeyboard
+                    ? NumericKeyboard(
+                        controller: widget.controller,
+                        focusNode: widget.focusNode,
+                        onEnterPressed: widget.onEnterPressed,
+                        onSubmitted: widget.onSubmitted,
+                        validator: widget.validator,
+                        commitOnEnterOnly: widget.commitOnEnterOnly,
+                        height: keysHeight,
+                        minValue: widget.numericMinValue,
+                        maxValue: widget.numericMaxValue,
+                        allowDecimalInput: widget.numericAllowDecimalInput,
+                        integersOnly: widget.numericIntegersOnly,
+                        maxLength: widget.maxLength,
+                        onDismiss: widget.onDismiss,
+                        keyboardTheme: theme,
+                      )
+                    : CustomKeyboard(
+                        controller: widget.controller,
+                        focusNode: widget.focusNode,
+                        onEnterPressed: widget.onEnterPressed,
+                        onSubmitted: widget.onSubmitted,
+                        validator: widget.validator,
+                        commitOnEnterOnly: widget.commitOnEnterOnly,
+                        height: keysHeight,
+                        maxLength: widget.maxLength,
+                        minLength: widget.minLength,
+                        onDismiss: widget.onDismiss,
+                        keyboardTheme: theme,
+                      ),
               ),
-            ),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onPanStart: (_) {
-                _cachePanBounds();
-              },
-              onPanUpdate: (details) {
-                final nx = (_position.dx + details.delta.dx)
-                    .clamp(_panMinX, _panMaxX)
-                    .toDouble();
-
-                final ny = (_position.dy + details.delta.dy)
-                    .clamp(_panMinY, _panMaxY)
-                    .toDouble();
-
-                _position = Offset(nx, ny);
-                _positionNotifier.value = _position;
-              },
-              child: Container(
-                height: 30,
-                decoration: BoxDecoration(
-                  color: theme.specialKeyColor,
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(16),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onPanStart: (_) => _cachePanBounds(),
+                onPanUpdate: (details) {
+                  final nx = (_position.dx + details.delta.dx)
+                      .clamp(_panMinX, _panMaxX)
+                      .toDouble();
+                  final ny = (_position.dy + details.delta.dy)
+                      .clamp(_panMinY, _panMaxY)
+                      .toDouble();
+                  _position = Offset(nx, ny);
+                  _positionNotifier.value = _position;
+                },
+                child: Container(
+                  height: _dragHandleHeight,
+                  decoration: BoxDecoration(
+                    color: theme.specialKeyColor,
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(16),
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.keyTextColor.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2),
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.keyTextColor.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
