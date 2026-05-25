@@ -284,6 +284,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       numericMaxValue: session.maxValue,
       numericAllowDecimalInput: session.showDecimalKey,
       numericIntegersOnly: session.integersOnlyValidation,
+      numericMaxFractionDigits: session.maxFractionDigits,
       minLength: session.useNumericKeyboard ? null : session.minLength,
       maxLength: session.maxLength,
       validator: session.validator,
@@ -322,7 +323,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       return RepaintBoundary(
         child: NumericKeyboard(
           key: ValueKey<String>(
-            'nk_${session.focusNode.hashCode}_${session.showDecimalKey}_${session.integersOnlyValidation}_${session.maxLength}',
+            'nk_${session.focusNode.hashCode}_${session.showDecimalKey}_${session.integersOnlyValidation}_${session.maxLength}_${session.maxFractionDigits}',
           ),
           controller: session.controller,
           focusNode: session.focusNode,
@@ -332,6 +333,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
           allowDecimalInput: session.showDecimalKey,
           integersOnly: session.integersOnlyValidation,
           maxLength: session.maxLength,
+          maxFractionDigits: session.maxFractionDigits,
           validator: session.validator,
           onDismiss: _dismiss,
           onEnterPressed: _onEnter,

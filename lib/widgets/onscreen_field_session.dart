@@ -15,6 +15,7 @@ class OnscreenFieldSession {
     this.validator,
     this.allowDecimalInput,
     this.integersOnly,
+    this.maxFractionDigits,
   });
 
   final TextEditingController controller;
@@ -31,6 +32,10 @@ class OnscreenFieldSession {
 
   /// When set, overrides whole-number validation (default from [keyboardType]).
   final bool? integersOnly;
+
+  /// Hard cap on digits after `.` on the numeric pad. When null, the cap is
+  /// inferred from [minValue] / [maxValue] (if set), otherwise no cap.
+  final int? maxFractionDigits;
 
   bool get useNumericKeyboard =>
       keyboard_mapping.preferOnscreenNumericKeyboard(keyboardType);

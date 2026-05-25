@@ -177,6 +177,20 @@ abstract final class NumericRange {
   }
 
   /// Simulates appending [digit] to [currentText] (same rules as the numeric pad).
+  ///
+  /// Reject rules, in order:
+  /// 1. [maxLength] cap (e.g. an access code that must be exactly 4 chars).
+  /// 2. Explicit [maxFractionDigits] cap. By design, [min] / [max] do **not**
+  ///    impose any fractional limit on their own — the user can type as many
+  ///    digits after `.` as they like unless [maxFractionDigits] is set. To
+  ///    cap fractional length you must opt in explicitly.
+  /// 3. Numeric value > [max] — this catches "999" in a 1-200 field and
+  ///    "500.1" in a 0.5-500 field. The whole-digit width of [max] is
+  ///    enforced implicitly by this rule (e.g. "1000" > 500 → rejected).
+  ///
+  /// Note: [min] is intentionally not enforced per-keystroke so the user can
+  /// build up to a valid number (e.g. typing "0", then "0.", then "0.5" in a
+  /// 0.5-500 field). The full `min` check runs in [validate] on Enter.
   static bool canAcceptDigit({
     required String currentText,
     required String digit,
@@ -184,6 +198,7 @@ abstract final class NumericRange {
     num? max,
     bool integersOnly = false,
     int? maxLength,
+    int? maxFractionDigits,
   }) {
     final String newText;
     if ((currentText.isEmpty || currentText == '0') && digit != '.') {
@@ -193,12 +208,43 @@ abstract final class NumericRange {
     }
 
     if (!isWithinMaxLength(newText, maxLength)) return false;
-    if (min == null && max == null) return true;
-    return isWithinMaxDigitLength(
-      newText,
-      min: min,
-      max: max,
-      integersOnly: integersOnly,
-    );
+
+    if (!integersOnly &&
+        maxFractionDigits != null &&
+        !_isWithinMaxFractionDigits(newText, maxFractionDigits)) {
+      return false;
+    }
+
+    if (max != null && !_isAtOrBelowMax(newText, max)) {
+      return false;
+    }
+    return true;
+  }
+
+  /// True when [newText] has at most [maxFractionDigits] digits after `.`.
+  ///
+  /// `0.` (incomplete decimal) passes any cap so the user can still tap `.`
+  /// before deciding whether to type a fractional digit.
+  static bool _isWithinMaxFractionDigits(String newText, int maxFractionDigits) {
+    final dot = newText.indexOf('.');
+    if (dot < 0) return true;
+    final frac = newText.substring(dot + 1);
+    return frac.length <= maxFractionDigits;
+  }
+
+  /// True when [newText] parsed as a number is <= [max].
+  ///
+  /// Treats an incomplete decimal (trailing `.`) as the integer part, so the
+  /// user can still type "500." in a 0.5–500 weight field before deciding
+  /// whether to add a fractional digit.
+  static bool _isAtOrBelowMax(String newText, num max) {
+    final trimmed = newText.trim();
+    if (trimmed.isEmpty) return true;
+    final parseText =
+        trimmed.endsWith('.') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+    if (parseText.isEmpty) return true;
+    final n = num.tryParse(parseText);
+    if (n == null) return true;
+    return n <= max;
   }
 }

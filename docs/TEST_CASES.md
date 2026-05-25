@@ -56,7 +56,7 @@ Tests [KeyboardController](../lib/core/keyboard_controller.dart) in isolation (G
 
 ### 1.2 `test/numeric_keyboard_controller_test.dart`
 
-Tests [NumericKeyboardController](../lib/core/numericKeyController.dart) with validator: integers 1–200.
+Tests [NumericKeyboardController](../lib/core/numeric_keyboard_controller.dart) with validator: integers 1–200.
 
 | ID | Test name | Preconditions | Steps | Expected result |
 |----|-----------|---------------|-------|-----------------|

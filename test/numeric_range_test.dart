@@ -135,5 +135,154 @@ void main() {
         'Must be >= 3.1',
       );
     });
+
+    test('canAcceptDigit rejects keystroke that would exceed max value', () {
+      // Quantity 1-200: "9" alone is fine, "99" is fine, but "999" > 200.
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '99',
+          digit: '9',
+          min: 1,
+          max: 200,
+          integersOnly: true,
+        ),
+        isFalse,
+      );
+
+      // Weight 0.5-500: "501" > 500.
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '50',
+          digit: '1',
+          min: 0.5,
+          max: 500,
+        ),
+        isFalse,
+      );
+
+      // Weight 0.5-500: "500.1" > 500.
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '500.',
+          digit: '1',
+          min: 0.5,
+          max: 500,
+        ),
+        isFalse,
+      );
+
+      // Rating 3.1-5.5: "5.6" > 5.5.
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '5.',
+          digit: '6',
+          min: 3.1,
+          max: 5.5,
+        ),
+        isFalse,
+      );
+    });
+
+    test('canAcceptDigit caps fractional digits when maxFractionDigits is set',
+        () {
+      // No bounds, but explicit cap of 1: "0.2" + "3" → reject.
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '0.2',
+          digit: '3',
+          maxFractionDigits: 1,
+        ),
+        isFalse,
+      );
+
+      // No bounds, no cap: anything goes (legacy behavior).
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '0.2',
+          digit: '3',
+        ),
+        isTrue,
+      );
+
+      // Explicit cap of 2 lets "12.34" through but rejects "12.345".
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '12.3',
+          digit: '4',
+          maxFractionDigits: 2,
+        ),
+        isTrue,
+      );
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '12.34',
+          digit: '5',
+          maxFractionDigits: 2,
+        ),
+        isFalse,
+      );
+
+      // integersOnly wins over the cap (no `.` ever).
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '12',
+          digit: '3',
+          maxFractionDigits: 1,
+          integersOnly: true,
+        ),
+        isTrue,
+      );
+
+      // min/max do not impose any implicit fractional cap. The user can
+      // type as many digits after `.` as they want; only maxFractionDigits
+      // gates it (and max enforces the numeric value).
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '0.5',
+          digit: '5',
+          min: 0.5,
+          max: 500,
+          maxFractionDigits: 2,
+        ),
+        // 0.55 ≤ 500 and frac length 2 ≤ 2 → accepted.
+        isTrue,
+      );
+      // No cap + bounds → still no fractional limit beyond the numeric max.
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '0.123456',
+          digit: '7',
+          min: 0.5,
+          max: 500,
+        ),
+        isTrue,
+      );
+    });
+
+    test('canAcceptDigit allows in-progress typing that stays at or below max',
+        () {
+      // Trailing "." is treated as the integer part for the max comparison so
+      // the user can still type "500." in a 0.5-500 weight field.
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '500',
+          digit: '.',
+          min: 0.5,
+          max: 500,
+        ),
+        isTrue,
+      );
+      // Same as above but for a tighter range; the user can still reach the
+      // boundary value.
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '5.',
+          digit: '5',
+          min: 3.1,
+          max: 5.5,
+        ),
+        isTrue,
+      );
+    });
   });
 }

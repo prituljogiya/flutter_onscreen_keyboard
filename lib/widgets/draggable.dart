@@ -27,6 +27,10 @@ class DraggableDynamicKeyboard extends StatefulWidget {
   final bool numericAllowDecimalInput;
   final bool numericIntegersOnly;
 
+  /// Hard cap on digits after `.` for the numeric pad. See
+  /// [NumericKeyboard.maxFractionDigits].
+  final int? numericMaxFractionDigits;
+
   /// Passed to [CustomKeyboard] when [useNumericKeyboard] is false.
   final int? maxLength;
 
@@ -63,6 +67,7 @@ class DraggableDynamicKeyboard extends StatefulWidget {
     this.numericMaxValue,
     this.numericAllowDecimalInput = true,
     this.numericIntegersOnly = false,
+    this.numericMaxFractionDigits,
     this.maxLength,
     this.minLength,
     required this.onDismiss,
@@ -416,6 +421,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                 allowDecimalInput: widget.numericAllowDecimalInput,
                 integersOnly: widget.numericIntegersOnly,
                 maxLength: widget.maxLength,
+                maxFractionDigits: widget.numericMaxFractionDigits,
                 onDismiss: widget.onDismiss,
                 keyboardTheme: theme,
               )

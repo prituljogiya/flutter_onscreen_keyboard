@@ -20,6 +20,10 @@ class NumericKeyboardController extends ChangeNotifier {
   num? maxValue;
   int? maxLength;
 
+  /// Hard cap on digits after `.`. When null, the cap is inferred from
+  /// [minValue] / [maxValue] (if set), otherwise no cap.
+  int? maxFractionDigits;
+
   String? _validationError;
   bool _active = true;
   bool _hasUserEdited = false;
@@ -39,6 +43,7 @@ class NumericKeyboardController extends ChangeNotifier {
     this.minValue,
     this.maxValue,
     this.maxLength,
+    this.maxFractionDigits,
   });
 
   bool get canInsertDecimal => allowDecimalInput && !integersOnly;
@@ -52,6 +57,7 @@ class NumericKeyboardController extends ChangeNotifier {
     num? minValue,
     num? maxValue,
     int? maxLength,
+    int? maxFractionDigits,
   }) {
     this.textController = textController;
     if (previewFocusNode != null) {
@@ -67,6 +73,7 @@ class NumericKeyboardController extends ChangeNotifier {
     this.minValue = minValue;
     this.maxValue = maxValue;
     this.maxLength = maxLength;
+    this.maxFractionDigits = maxFractionDigits;
     _active = true;
     clearValidation();
   }
@@ -101,6 +108,7 @@ class NumericKeyboardController extends ChangeNotifier {
       max: maxValue,
       integersOnly: integersOnly,
       maxLength: maxLength,
+      maxFractionDigits: maxFractionDigits,
     )) {
       return;
     }

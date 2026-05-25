@@ -21,6 +21,7 @@ class OnscreenTextField extends StatefulWidget {
     this.maxValue,
     this.allowDecimalInput,
     this.integersOnly,
+    this.maxFractionDigits,
     this.validator,
     this.maxLines = 1,
     this.showCursor = true,
@@ -43,6 +44,12 @@ class OnscreenTextField extends StatefulWidget {
 
   /// When set, values must be whole numbers; range min/max still applies.
   final bool? integersOnly;
+
+  /// Hard cap on digits after `.` on the numeric pad. When null, the cap is
+  /// inferred from [minValue] / [maxValue] (if set), otherwise no cap. Set
+  /// this on decimal fields without bounds to stop the user typing
+  /// arbitrarily long fractional parts (e.g. `0.123456789`).
+  final int? maxFractionDigits;
   final String? Function(String)? validator;
   final int? maxLines;
   final bool showCursor;
@@ -64,6 +71,7 @@ class _OnscreenTextFieldState extends State<OnscreenTextField> {
         maxValue: widget.maxValue,
         allowDecimalInput: widget.allowDecimalInput,
         integersOnly: widget.integersOnly,
+        maxFractionDigits: widget.maxFractionDigits,
         validator: widget.validator,
       );
 

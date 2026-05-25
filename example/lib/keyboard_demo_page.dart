@@ -293,6 +293,7 @@ class _KeyboardDemoPageState extends State<KeyboardDemoPage> {
                 const TextInputType.numberWithOptions(decimal: true),
             minValue: _weightMin,
             maxValue: _weightMax,
+            maxFractionDigits: 5,
             decoration: InputDecoration(
               labelText: 'Weight ($_weightMin – $_weightMax kg)',
               border: const OutlineInputBorder(),

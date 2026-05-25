@@ -4,9 +4,9 @@ import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
 import '../core/numeric_range.dart';
 import '../core/preview_strip_scroll.dart';
-import '../core/numericKeyController.dart';
+import '../core/numeric_keyboard_controller.dart';
 import '../core/theme_controller.dart';
-import 'numerickeyboardkey.dart';
+import 'numeric_keyboard_key.dart';
 
 class NumericKeyboard extends StatefulWidget {
   final TextEditingController controller;
@@ -32,6 +32,11 @@ class NumericKeyboard extends StatefulWidget {
   /// Maximum characters in the preview (e.g. 4 for an access code).
   final int? maxLength;
 
+  /// Hard cap on digits after `.`. When null, the cap is inferred from
+  /// [minValue] / [maxValue] (if set). Set explicitly to limit fractional
+  /// length on decimal fields that have no min/max bounds.
+  final int? maxFractionDigits;
+
   /// Called when the user taps close (X) or the host dismisses the panel.
   final VoidCallback onDismiss;
 
@@ -53,6 +58,7 @@ class NumericKeyboard extends StatefulWidget {
     this.allowDecimalInput = true,
     this.integersOnly = false,
     this.maxLength,
+    this.maxFractionDigits,
     required this.onDismiss,
     this.keyboardTheme,
   });
@@ -162,6 +168,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
       minValue: widget.minValue,
       maxValue: widget.maxValue,
       maxLength: widget.maxLength,
+      maxFractionDigits: widget.maxFractionDigits,
     );
   }
 
@@ -219,7 +226,8 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         widget.integersOnly != oldWidget.integersOnly ||
         widget.maxLength != oldWidget.maxLength ||
         widget.minValue != oldWidget.minValue ||
-        widget.maxValue != oldWidget.maxValue) {
+        widget.maxValue != oldWidget.maxValue ||
+        widget.maxFractionDigits != oldWidget.maxFractionDigits) {
       _keyboardController.rebind(
         textController: _inputController,
         previewFocusNode: _previewFocusNode,
@@ -229,6 +237,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         minValue: widget.minValue,
         maxValue: widget.maxValue,
         maxLength: widget.maxLength,
+        maxFractionDigits: widget.maxFractionDigits,
       );
       setState(() {});
     }

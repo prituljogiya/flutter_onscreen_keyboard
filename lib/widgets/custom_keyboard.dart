@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_onscreen_keyboard/core/keyboard_controller.dart';
-import 'package:flutter_onscreen_keyboard/widgets/keyboardkey.dart';
+import 'package:flutter_onscreen_keyboard/widgets/keyboard_key.dart';
 import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
 import '../core/preview_strip_scroll.dart';
 import '../core/theme_controller.dart';
-import 'duelKey.dart';
+import 'dual_key.dart';
 
 class CustomKeyboard extends StatefulWidget {
   final TextEditingController controller;
@@ -578,16 +578,14 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
         listenable: _keyboardController,
         builder: (context, _) {
           final useTop = _keyboardController.useTopCharacterOnDualKey;
+          // Long-press to insert the top (special) character is intentionally
+          // disabled. The special character is reachable only by tapping
+          // SHIFT (or CAPS) first — i.e. it always follows the shift state.
           return DualKey(
             key: ValueKey<String>('dual-$topChar-$bottomChar-$useTop'),
             topChar: topChar,
             bottomChar: bottomChar,
             onTap: onTap,
-            onLongPressKey: () {
-              _runKeyAction(() {
-                _keyboardController.insertText(topChar);
-              });
-            },
             height: keyBodyHeight,
             alternateChars: alternates,
             onAlternateSelected: onAlternate,
