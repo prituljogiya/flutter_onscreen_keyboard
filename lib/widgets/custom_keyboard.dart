@@ -1,13 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' hide KeyboardKey;
+
 import 'package:flutter_onscreen_keyboard/core/keyboard_controller.dart';
 import 'package:flutter_onscreen_keyboard/widgets/keyboardkey.dart';
-import 'package:get/get.dart';
 import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
-import '../core/onscreen_keyboard_validation.dart';
 import '../core/preview_strip_scroll.dart';
 import '../core/theme_controller.dart';
 import 'duelKey.dart';
@@ -31,7 +27,7 @@ class CustomKeyboard extends StatefulWidget {
   /// Called when the user taps close (X) or the host dismisses the panel.
   final VoidCallback onDismiss;
 
-  /// When set, used instead of [ThemeController.keyboardTheme] (no GetX listen).
+  /// When set, used instead of [ThemeController.keyboardTheme] (skips listener).
   final KeyboardTheme? keyboardTheme;
 
   const CustomKeyboard({
@@ -100,11 +96,21 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   }
 
   void _onHostFieldFocusChanged() {
-    if (!widget.focusNode.hasFocus || !mounted || _suppressPreviewRefocus) {
-      return;
-    }
+    if (!mounted || _suppressPreviewRefocus) return;
+    if (!widget.focusNode.hasFocus) return;
     _ensurePreviewSelectionAtEnd();
     if (_previewFocusNode.canRequestFocus) {
+      _previewFocusNode.requestFocus();
+    }
+  }
+
+  /// Take preview focus on mount so typing works even when the host field is
+  /// never focused (the host's [OnscreenKeyboardHost] no longer focuses fields
+  /// in order to avoid [TextField]'s auto-scroll-to-caret jump).
+  void _grabPreviewFocus() {
+    if (!mounted || _suppressPreviewRefocus) return;
+    _ensurePreviewSelectionAtEnd();
+    if (_previewFocusNode.canRequestFocus && !_previewFocusNode.hasFocus) {
       _previewFocusNode.requestFocus();
     }
   }
@@ -142,36 +148,21 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     _inputController.addListener(_syncPreviewScroll);
     _ensurePreviewSelectionAtEnd();
     _initController();
-    if (widget.focusNode.hasFocus) {
-      _onHostFieldFocusChanged();
-    }
+    _grabPreviewFocus();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _syncPreviewScroll();
     });
   }
 
   void _initController() {
-    final tag = widget.focusNode.hashCode.toString();
-    if (Get.isRegistered<KeyboardController>(tag: tag)) {
-      _keyboardController = Get.find<KeyboardController>(tag: tag);
-      _keyboardController.rebind(
-        textController: _inputController,
-        previewFocusNode: _previewFocusNode,
-        validator: widget.validator,
-        maxLength: widget.maxLength,
-        minLength: widget.minLength,
-      );
-    } else {
-      _keyboardController = KeyboardController(
-        textController: _inputController,
-        focusNode: widget.focusNode,
-        previewFocusNode: _previewFocusNode,
-        validator: widget.validator,
-        maxLength: widget.maxLength,
-        minLength: widget.minLength,
-      );
-      Get.put(_keyboardController, tag: tag);
-    }
+    _keyboardController = KeyboardController(
+      textController: _inputController,
+      focusNode: widget.focusNode,
+      previewFocusNode: _previewFocusNode,
+      validator: widget.validator,
+      maxLength: widget.maxLength,
+      minLength: widget.minLength,
+    );
     _keyboardController.clearValidation();
   }
 
@@ -181,12 +172,9 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     if (widget.focusNode != oldWidget.focusNode) {
       oldWidget.focusNode.removeListener(_onHostFieldFocusChanged);
       widget.focusNode.addListener(_onHostFieldFocusChanged);
-      releaseOnscreenKeyboardControllers(oldWidget.focusNode);
+      _keyboardController.dispose();
       _initController();
-      _keyboardController.clearValidation();
-      if (widget.focusNode.hasFocus) {
-        _onHostFieldFocusChanged();
-      }
+      _grabPreviewFocus();
     }
     if (widget.controller != oldWidget.controller && widget.commitOnEnterOnly) {
       _inputController.text = widget.controller.text;
@@ -209,10 +197,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   void dispose() {
     _teardown = true;
     widget.focusNode.removeListener(_onHostFieldFocusChanged);
-    final tag = widget.focusNode.hashCode.toString();
-    if (Get.isRegistered<KeyboardController>(tag: tag)) {
-      Get.delete<KeyboardController>(tag: tag);
-    }
+    _keyboardController.dispose();
     _inputController.removeListener(_syncPreviewScroll);
     _previewScrollController.dispose();
     _previewFocusNode.dispose();
@@ -226,6 +211,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   Widget build(BuildContext context) {
     return buildKeyboardWithResolvedTheme(
       widgetOverride: widget.keyboardTheme,
+      context: context,
       builder: (theme) => _buildKeyboardShell(context, theme),
     );
   }
@@ -237,46 +223,48 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     final hasBounds =
         widget.minLength != null || widget.maxLength != null;
 
-    return Obx(() {
-      _keyboardController.showValidationErrorRx.value;
-      final err = _keyboardController.shouldShowValidationError
-          ? _keyboardController.validationError
-          : null;
-      final errorText = err != null && err.trim().isNotEmpty ? err.trim() : null;
-      final showError = errorText != null;
-      final showBounds = hasBounds;
-      final panelHeight = KeyboardChromeLayout.customPanelHeight(
-        context: context,
-        isLandscape: isLandscape,
-        showError: showError,
-        showBounds: showBounds,
-        overrideHeight: widget.height,
-      );
+    return ListenableBuilder(
+      listenable: _keyboardController,
+      builder: (context, _) {
+        final err = _keyboardController.shouldShowValidationError
+            ? _keyboardController.validationError
+            : null;
+        final errorText =
+            err != null && err.trim().isNotEmpty ? err.trim() : null;
+        final showError = errorText != null;
+        final showBounds = hasBounds;
+        final panelHeight = KeyboardChromeLayout.customPanelHeight(
+          context: context,
+          isLandscape: isLandscape,
+          showError: showError,
+          showBounds: showBounds,
+          overrideHeight: widget.height,
+        );
 
-      return Container(
-        height: panelHeight,
-        decoration: BoxDecoration(
-          color: theme.backgroundColor,
-          boxShadow: [
-            BoxShadow(
-              color: theme.shadowColor.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            _buildPreviewStrip(
-              isLandscape: isLandscape,
-              caretColor: caretColor,
-            ),
+        return Container(
+          height: panelHeight,
+          decoration: BoxDecoration(
+            color: theme.backgroundColor,
+            boxShadow: [
+              BoxShadow(
+                color: theme.shadowColor.withValues(alpha: 0.2),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              _buildPreviewStrip(
+                isLandscape: isLandscape,
+                caretColor: caretColor,
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(10, 2, 10, 2),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    errorText ??  "",
+                    errorText ?? "",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -287,79 +275,49 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                   ),
                 ),
               ),
-            Expanded(
-              child: Listener(
-              behavior: HitTestBehavior.translucent,
-              onPointerDown: (_) => _retainPreviewFocus(),
-              child: Obx(() {
-              final layout = _keyboardController.currentLayout;
-              // Repaint Shift/Caps when modifiers change (not only on layout swap).
-              _keyboardController.isShiftActiveRx.value;
-              _keyboardController.isCapsLockRx.value;
-              _keyboardController.capsOneShotRx.value;
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  final horizontalPadding = isLandscape ? 3.0 : 4.0;
-                  final keyVertInset = theme.keySpacing;
-                  const layoutSafety = 2.0;
-                  final availableForRows =
-                      (constraints.maxHeight - layoutSafety)
-                          .clamp(0.0, double.infinity);
+              Expanded(
+                child: Listener(
+                  behavior: HitTestBehavior.translucent,
+                  onPointerDown: (_) => _retainPreviewFocus(),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final layout = _keyboardController.currentLayout;
+                      final horizontalPadding = isLandscape ? 3.0 : 4.0;
+                      final keyVertInset = theme.keySpacing;
+                      const layoutSafety = 2.0;
+                      final availableForRows =
+                          (constraints.maxHeight - layoutSafety)
+                              .clamp(0.0, double.infinity);
 
-                  final rowCount = layout.length;
-                  final maxPerRow = rowCount > 0
-                      ? availableForRows / rowCount
-                      : availableForRows;
+                      final rowCount = layout.length;
+                      final maxPerRow = rowCount > 0
+                          ? availableForRows / rowCount
+                          : availableForRows;
 
-                  final maxRowCap = isLandscape ? 44.0 : 56.0;
-                  final rowHeight =
-                      maxPerRow > maxRowCap ? maxRowCap : maxPerRow;
+                      final maxRowCap = isLandscape ? 44.0 : 56.0;
+                      final rowHeight =
+                          maxPerRow > maxRowCap ? maxRowCap : maxPerRow;
 
-                  final keyBodyHeight = (rowHeight - keyVertInset).clamp(
-                    0.0,
-                    rowHeight,
-                  );
+                      final keyBodyHeight = (rowHeight - keyVertInset).clamp(
+                        0.0,
+                        rowHeight,
+                      );
 
-                  return _buildAlphanumericKeyboard(
-                    layout,
-                    theme,
-                    rowHeight: rowHeight,
-                    keyBodyHeight: keyBodyHeight,
-                    horizontalPadding: horizontalPadding,
-                  );
-                },
-              );
-            }),
-            ),
+                      return _buildAlphanumericKeyboard(
+                        layout,
+                        theme,
+                        rowHeight: rowHeight,
+                        keyBodyHeight: keyBodyHeight,
+                        horizontalPadding: horizontalPadding,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      );
-    });
-  }
-
-  Widget _lengthBoundField(KeyboardTheme theme, String label, String value) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: theme.specialKeyTextColor,
-            fontSize: 13,
-            fontWeight: FontWeight.normal,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          value,
-          style: TextStyle(
-            color: theme.keyTextColor,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -381,7 +339,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
             ),
             alignment: Alignment.centerLeft,
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               border: const Border(
                 bottom: BorderSide(
                   color: Colors.white24,
@@ -616,26 +574,28 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
 
     Widget keyWidget;
     if (isDual) {
-      keyWidget = Obx(() {
-        final useTop = _keyboardController.useTopCharacterOnDualKey;
-        _keyboardController.isShiftActiveRx.value;
-        return DualKey(
-          key: ValueKey<String>('dual-$topChar-$bottomChar-$useTop'),
-          topChar: topChar,
-          bottomChar: bottomChar,
-          onTap: onTap,
-          onLongPressKey: () {
-            _runKeyAction(() {
-              _keyboardController.insertText(topChar);
-            });
-          },
-          height: keyBodyHeight,
-          alternateChars: alternates,
-          onAlternateSelected: onAlternate,
-          theme: theme,
-          primaryIsTop: useTop,
-        );
-      });
+      keyWidget = ListenableBuilder(
+        listenable: _keyboardController,
+        builder: (context, _) {
+          final useTop = _keyboardController.useTopCharacterOnDualKey;
+          return DualKey(
+            key: ValueKey<String>('dual-$topChar-$bottomChar-$useTop'),
+            topChar: topChar,
+            bottomChar: bottomChar,
+            onTap: onTap,
+            onLongPressKey: () {
+              _runKeyAction(() {
+                _keyboardController.insertText(topChar);
+              });
+            },
+            height: keyBodyHeight,
+            alternateChars: alternates,
+            onAlternateSelected: onAlternate,
+            theme: theme,
+            primaryIsTop: useTop,
+          );
+        },
+      );
     } else {
       keyWidget = KeyboardKey(
         label: key,

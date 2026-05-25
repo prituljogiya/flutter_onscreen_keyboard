@@ -2,15 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_onscreen_keyboard/core/keyboard_controller.dart';
 import 'package:flutter_onscreen_keyboard/core/onscreen_keyboard_validation.dart';
-import 'package:get/get.dart';
 
 void main() {
-  setUp(() {
-    Get.testMode = true;
-  });
-
-  tearDown(Get.reset);
-
   KeyboardController newController({
     TextEditingController? text,
     int? minLength,
@@ -36,7 +29,7 @@ void main() {
       c.insertText('a');
       expect(text.text, 'a');
       expect(c.isShiftActive, isFalse);
-      c.onClose();
+      c.dispose();
     });
 
     test('maxLength stops further input', () {
@@ -44,7 +37,7 @@ void main() {
       final c = newController(text: text, maxLength: 3);
       c.insertText('abcd');
       expect(text.text, isEmpty);
-      c.onClose();
+      c.dispose();
     });
 
     test('minLength validates on Enter only', () {
@@ -60,7 +53,7 @@ void main() {
       c.clearValidation();
       c.insertText('c');
       expect(c.enter(), isTrue);
-      c.onClose();
+      c.dispose();
     });
 
     test('empty value blocks Enter and keeps validation visible', () {
@@ -69,7 +62,7 @@ void main() {
       expect(c.enter(), isFalse);
       expect(c.shouldShowValidationError, isTrue);
       expect(c.validationError, 'Enter a value');
-      c.onClose();
+      c.dispose();
     });
 
     test('validator runs on Enter', () {
@@ -85,7 +78,7 @@ void main() {
       c.clearValidation();
       c.insertText('user@example.com');
       expect(c.enter(), isTrue);
-      c.onClose();
+      c.dispose();
     });
   });
 
@@ -98,7 +91,7 @@ void main() {
       expect(c.isCapsLock, isFalse);
       expect(c.isUppercase, isTrue);
       expect(c.isCapsMode, isTrue);
-      c.onClose();
+      c.dispose();
     });
 
     test('shift while caps one-shot enables caps lock with both lit', () {
@@ -113,7 +106,7 @@ void main() {
       c.toggleShift();
       expect(c.isShiftActive, isFalse);
       expect(c.isUppercase, isTrue);
-      c.onClose();
+      c.dispose();
     });
 
     test('caps while shift active enables caps lock with both lit', () {
@@ -127,7 +120,7 @@ void main() {
       expect(c.isShiftActive, isTrue);
       expect(c.isCapsOneShot, isFalse);
       expect(c.isUppercase, isFalse);
-      c.onClose();
+      c.dispose();
     });
 
     test('caps lock then shift toggles case same as shift then caps lock', () {
@@ -156,8 +149,8 @@ void main() {
       expect(fromCapsFirst.isShiftActive, isTrue);
       expect(fromCapsFirst.isUppercase, isFalse);
 
-      fromCapsFirst.onClose();
-      fromShiftFirst.onClose();
+      fromCapsFirst.dispose();
+      fromShiftFirst.dispose();
     });
 
     test('single caps keeps uppercase layout after typing', () async {
@@ -176,7 +169,7 @@ void main() {
       c.onCapsKeyPressed();
       expect(c.isCapsOneShot, isFalse);
       expect(c.isUppercase, isFalse);
-      c.onClose();
+      c.dispose();
     });
 
     test('caps does not change dual key symbol selection', () {
@@ -192,7 +185,7 @@ void main() {
       expect(c.useTopCharacterOnDualKey, isTrue);
       c.toggleShift();
       expect(c.useTopCharacterOnDualKey, isFalse);
-      c.onClose();
+      c.dispose();
     });
 
     test('double tap caps enables caps lock', () {
@@ -210,7 +203,7 @@ void main() {
       c.onCapsKeyPressed();
       expect(c.isCapsLock, isFalse);
       expect(c.isUppercase, isFalse);
-      c.onClose();
+      c.dispose();
     });
 
     test('shift toggles uppercase layout', () {
@@ -220,7 +213,7 @@ void main() {
       expect(c.isUppercase, isTrue);
       c.toggleShift();
       expect(c.isUppercase, isFalse);
-      c.onClose();
+      c.dispose();
     });
   });
 }

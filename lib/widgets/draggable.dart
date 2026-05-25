@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+
 import '../core/keyboard_theme_resolver.dart';
 import '../core/theme_controller.dart';
 import 'custom_keyboard.dart';
@@ -98,11 +98,8 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
     _positionNotifier.value = _position;
 
     widget.focusNode.addListener(_onFocusChange);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_isVisible || widget.alwaysVisible) {
-        _ensureKeyboardVisible();
-      }
-    });
+    // Centering is performed synchronously in [build] the first time the
+    // layout area is known, so the panel never paints at the wrong offset.
   }
 
   @override
@@ -328,6 +325,24 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
 
           final keyboardHeight = widget.useNumericKeyboard ? 366.0 : 327.0;
 
+          // Compute the centered position synchronously the first time we
+          // know the layout area so the panel paints in the correct spot on
+          // its very first frame (no visible jump from the initial offset).
+          if (!_hasPositionedInitially) {
+            _hasPositionedInitially = true;
+            _position = Offset(
+              ((_layoutArea.width - keyboardWidth) / 2).clamp(
+                0.0,
+                double.infinity,
+              ),
+              ((_layoutArea.height - keyboardHeight) / 2).clamp(
+                0.0,
+                double.infinity,
+              ),
+            );
+            _positionNotifier.value = _position;
+          }
+
           _keyboardPanel = RepaintBoundary(
             child: _buildKeyboardPanel(theme, keyboardWidth, keyboardHeight),
           );
@@ -343,7 +358,10 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                       left: position.dx,
                       top: position.dy,
                       child: Listener(
-                        child: _keyboardPanel,
+                        child: _AnimatedKeyboardAppearance(
+                          duration: widget.animationDuration,
+                          child: _keyboardPanel,
+                        ),
                       ),
                     );
                   },
@@ -356,13 +374,16 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
 
     return buildKeyboardWithResolvedTheme(
       widgetOverride: widget.keyboardTheme,
+      context: context,
       builder: buildWithTheme,
     );
   }
 
-  Widget _buildKeyboardPanel(KeyboardTheme theme,
-      double keyboardWidth,
-      double keyboardHeight,) {
+  Widget _buildKeyboardPanel(
+    KeyboardTheme theme,
+    double keyboardWidth,
+    double keyboardHeight,
+  ) {
     return Material(
       color: Colors.transparent,
 
@@ -442,7 +463,7 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: theme.keyTextColor.withOpacity(0.3),
+                      color: theme.keyTextColor.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -452,6 +473,69 @@ class _DraggableDynamicKeyboardState extends State<DraggableDynamicKeyboard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Fades + slightly scales the keyboard panel in when it first appears so the
+/// open feels smooth rather than popping into place.
+class _AnimatedKeyboardAppearance extends StatefulWidget {
+  const _AnimatedKeyboardAppearance({
+    required this.child,
+    required this.duration,
+  });
+
+  final Widget child;
+  final Duration duration;
+
+  @override
+  State<_AnimatedKeyboardAppearance> createState() =>
+      _AnimatedKeyboardAppearanceState();
+}
+
+class _AnimatedKeyboardAppearanceState
+    extends State<_AnimatedKeyboardAppearance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _curved;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+    _curved = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedKeyboardAppearance oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.duration != widget.duration) {
+      _controller.duration = widget.duration;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _curved,
+      builder: (context, child) {
+        final t = _curved.value;
+        return Opacity(
+          opacity: t,
+          child: Transform.scale(
+            scale: 0.96 + 0.04 * t,
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
     );
   }
 }

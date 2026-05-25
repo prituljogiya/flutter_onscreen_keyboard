@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_onscreen_keyboard/custom_keyboard.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 
 import 'package:flutter_onscreen_keyboard_example/app_keyboard_theme.dart';
 import 'package:flutter_onscreen_keyboard_example/keyboard_demo_page.dart';
 
 const customKeyboardPreviewKey = ValueKey<String>('customKeyboardPreview');
 
-/// Resets GetX and applies plugin config before each test group.
+/// Resets the plugin and applies test config before each group.
 void configureKeyboardTests({required bool useCustomKeyboard}) {
-  Get.testMode = true;
-  Get.reset();
+  FlutterOnscreenKeyboard.resetForTest();
   FlutterOnscreenKeyboard.configure(
     OnscreenKeyboardConfig.withColors(
       colors: AppKeyboardTheme.colors,
@@ -22,7 +20,7 @@ void configureKeyboardTests({required bool useCustomKeyboard}) {
 }
 
 void tearDownKeyboardTests() {
-  Get.reset();
+  FlutterOnscreenKeyboard.resetForTest();
 }
 
 void bindLargeTestViewport(WidgetTester tester) {
@@ -54,9 +52,11 @@ class _TestRoot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<ThemeController>(
-      builder: (tc) {
-        return GetMaterialApp(
+    final tc = FlutterOnscreenKeyboard.themeController;
+    return ListenableBuilder(
+      listenable: tc,
+      builder: (context, _) {
+        return MaterialApp(
           theme: tc.lightTheme,
           darkTheme: tc.darkTheme,
           themeMode: tc.themeMode,

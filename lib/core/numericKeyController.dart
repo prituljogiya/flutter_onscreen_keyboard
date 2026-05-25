@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 import 'numeric_range.dart';
 import 'text_editing_controller_guard.dart';
 
-class NumericKeyboardController extends GetxController {
+/// Drives the on-screen numeric keyboard.
+///
+/// Plain Dart state, published via [ChangeNotifier]; listen with
+/// [ListenableBuilder] (no GetX required).
+class NumericKeyboardController extends ChangeNotifier {
   TextEditingController textController;
   final FocusNode focusNode;
-  /// Preview strip focus (caret). May be set after [Get.find] if created without it.
+
+  /// Preview strip focus (caret). Optional, can be assigned after construction.
   FocusNode? previewFocusNode;
   String? Function(String)? validator;
   bool allowDecimalInput;
@@ -16,13 +20,11 @@ class NumericKeyboardController extends GetxController {
   num? maxValue;
   int? maxLength;
 
-  final RxnString _validationError = RxnString();
+  String? _validationError;
   bool _active = true;
   bool _hasUserEdited = false;
 
-  String? get validationError => _validationError.value;
-
-  RxnString get validationErrorRx => _validationError;
+  String? get validationError => _validationError;
 
   String get text => textController.text;
   bool get isActive => _active;
@@ -70,9 +72,9 @@ class NumericKeyboardController extends GetxController {
   }
 
   @override
-  void onClose() {
+  void dispose() {
     _active = false;
-    super.onClose();
+    super.dispose();
   }
 
   bool get _canEdit =>
@@ -150,8 +152,10 @@ class NumericKeyboardController extends GetxController {
 
   void applyValidationError(String? message) {
     final trimmed = message?.trim();
-    _validationError.value =
-        (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    final next = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    if (_validationError == next) return;
+    _validationError = next;
+    notifyListeners();
   }
 
   bool enter({String? Function(String value)? strictValidator}) {
@@ -161,7 +165,7 @@ class NumericKeyboardController extends GetxController {
     } else {
       _validate(force: true);
     }
-    final message = _validationError.value?.trim();
+    final message = _validationError?.trim();
     if (message != null && message.isNotEmpty) {
       return false;
     }
@@ -191,8 +195,10 @@ class NumericKeyboardController extends GetxController {
   }
 
   void clearValidation() {
-    _validationError.value = null;
+    final hadError = _validationError != null;
+    _validationError = null;
     _hasUserEdited = false;
+    if (hadError) notifyListeners();
   }
 
   void _validate({bool force = false}) {
@@ -201,13 +207,18 @@ class NumericKeyboardController extends GetxController {
       return;
     }
     if (!force && NumericRange.isIncompleteDecimal(textController.text)) {
-      _validationError.value = null;
+      if (_validationError != null) {
+        _validationError = null;
+        notifyListeners();
+      }
       return;
     }
     final message = validator?.call(textController.text);
     final trimmed = message?.trim();
-    _validationError.value =
-        (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    final next = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    if (_validationError == next) return;
+    _validationError = next;
+    notifyListeners();
   }
 
   void validateNow() => _validate(force: true);

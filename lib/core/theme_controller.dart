@@ -1,60 +1,57 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 import 'onscreen_keyboard_colors.dart';
 import 'onscreen_keyboard_config.dart';
 
 /// Owns [KeyboardTheme] and Material [ThemeData] for the host app and keyboards.
-/// Call [updateTheme], [customizeKeyboardTheme], or [toggleTheme]; wrap
-/// [GetMaterialApp] with [GetBuilder]<[ThemeController]> so scaffold colors stay
-/// in sync with [keyboardTheme.backgroundColor].
-class ThemeController extends GetxController {
-  final RxBool _isDarkMode = true.obs;
+/// Call [updateTheme], [customizeKeyboardTheme], or [toggleTheme]; wrap your
+/// [MaterialApp] / app shell with a [ListenableBuilder] on this controller so
+/// scaffold colors stay in sync with [keyboardTheme.backgroundColor].
+class ThemeController extends ChangeNotifier {
+  bool _isDarkMode = true;
 
-  final Rx<Color> _primaryColor = const Color(0xFF9C27B0).obs;
+  Color _primaryColor = const Color(0xFF9C27B0);
 
-  final Rx<KeyboardTheme> _keyboardTheme = KeyboardTheme.purpleCyan().obs;
+  KeyboardTheme _keyboardTheme = KeyboardTheme.purpleCyan();
 
-  bool get isDarkMode => _isDarkMode.value;
+  bool get isDarkMode => _isDarkMode;
 
-  Color get primaryColor => _primaryColor.value;
+  Color get primaryColor => _primaryColor;
 
-  RxBool get isDarkModeRx => _isDarkMode;
-
-  KeyboardTheme get keyboardTheme => _keyboardTheme.value;
-
-  Rx<KeyboardTheme> get keyboardThemeRx => _keyboardTheme;
+  KeyboardTheme get keyboardTheme => _keyboardTheme;
 
   ThemeController() {
     final cfg = globalOnscreenKeyboardConfig;
     if (cfg.keyboardTheme != null && cfg.replaceDefaultTheme) {
-      _keyboardTheme.value = cfg.keyboardTheme!;
-      _isDarkMode.value =
+      _keyboardTheme = cfg.keyboardTheme!;
+      _isDarkMode =
           cfg.keyboardTheme!.backgroundColor.computeLuminance() < 0.4;
       return;
     }
 
     final brightness = PlatformDispatcher.instance.platformBrightness;
 
-    _isDarkMode.value = brightness == Brightness.dark;
+    _isDarkMode = brightness == Brightness.dark;
 
-    _keyboardTheme.value = _isDarkMode.value
+    _keyboardTheme = _isDarkMode
         ? KeyboardTheme.darkTheme()
         : KeyboardTheme.lightTheme();
   }
 
-  /// Sets the on-screen keyboard palette and rebuilds [GetBuilder]/listeners.
+  /// Sets the on-screen keyboard palette and notifies listeners.
   void updateTheme(KeyboardTheme newTheme) {
-    _keyboardTheme.value = newTheme;
-    update();
+    if (identical(_keyboardTheme, newTheme)) return;
+    _keyboardTheme = newTheme;
+    notifyListeners();
   }
 
   /// Adjusts the current [KeyboardTheme] with a callback (e.g. [KeyboardTheme.copyWith]).
   void customizeKeyboardTheme(KeyboardTheme Function(KeyboardTheme current) fn) {
-    _keyboardTheme.value = fn(_keyboardTheme.value);
-    update();
+    _keyboardTheme = fn(_keyboardTheme);
+    notifyListeners();
   }
 
   void toggleTheme() {
@@ -63,22 +60,22 @@ class ThemeController extends GetxController {
       return;
     }
 
-    _isDarkMode.value = !_isDarkMode.value;
+    _isDarkMode = !_isDarkMode;
 
-    _keyboardTheme.value = _isDarkMode.value
+    _keyboardTheme = _isDarkMode
         ? KeyboardTheme.darkTheme()
         : KeyboardTheme.lightTheme();
 
-    update();
+    notifyListeners();
   }
 
   void setPrimaryColor(Color color) {
-    _primaryColor.value = color;
-    update();
+    if (_primaryColor == color) return;
+    _primaryColor = color;
+    notifyListeners();
   }
 
-  ThemeMode get themeMode =>
-      _isDarkMode.value ? ThemeMode.dark : ThemeMode.light;
+  ThemeMode get themeMode => _isDarkMode ? ThemeMode.dark : ThemeMode.light;
 
   ThemeData get lightTheme => _generateTheme(Brightness.light);
 
@@ -86,7 +83,7 @@ class ThemeController extends GetxController {
 
   ThemeData _generateTheme(Brightness brightness) {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: _primaryColor.value,
+      seedColor: _primaryColor,
       brightness: brightness,
     );
 
@@ -94,7 +91,7 @@ class ThemeController extends GetxController {
       useMaterial3: true,
       colorScheme: colorScheme,
       brightness: brightness,
-      scaffoldBackgroundColor: _keyboardTheme.value.backgroundColor,
+      scaffoldBackgroundColor: _keyboardTheme.backgroundColor,
       appBarTheme: AppBarTheme(
         centerTitle: true,
         backgroundColor: brightness == Brightness.dark
@@ -187,7 +184,7 @@ class KeyboardTheme {
       activeKeyColor: const Color(0xFF31AC6F),
       keyPressedColor: const Color(0xFF31AC6F),
       activeKeyTextColor: Colors.white,
-      keyBorderColor: const Color(0xFF5A3A7A).withOpacity(0.5),
+      keyBorderColor: const Color(0xFF5A3A7A).withValues(alpha: 0.5),
       keyBorderWidth: 1,
       borderRadius: 8,
       fontSize: 16,
@@ -221,7 +218,7 @@ class KeyboardTheme {
       activeKeyColor: const Color(0xFF31AC6F),
       keyPressedColor: const Color(0xFF31AC6F),
       activeKeyTextColor: Colors.white,
-      keyBorderColor: Colors.grey.withOpacity(0.3),
+      keyBorderColor: Colors.grey.withValues(alpha: 0.3),
       keyBorderWidth: 1,
       borderRadius: 8,
       fontSize: 16,

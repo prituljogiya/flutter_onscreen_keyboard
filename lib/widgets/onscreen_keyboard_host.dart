@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../core/onscreen_keyboard_config.dart';
-import '../core/onscreen_keyboard_validation.dart';
 import 'custom_keyboard.dart';
 import 'draggable.dart';
 import 'numeric.dart';
@@ -100,17 +99,53 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
   OnscreenFieldSession? _session;
   final GlobalKey _alphaKeyboardKey = GlobalKey(debugLabel: 'alphaKeyboard');
 
+  /// Stable identity anchor for [widget.child] so its element (and any
+  /// [Scrollable] state inside it, including the user's current scroll
+  /// offset) is preserved when the keyboard mounts/unmounts and the form
+  /// moves to a new parent slot.
+  final GlobalKey _formAnchorKey =
+      GlobalKey(debugLabel: 'onscreenFormAnchor');
+
   /// Form scroll offset captured when the keyboard opens (restored on close).
   double? _hostScrollOffsetBeforeKeyboard;
 
+  Widget get _anchoredChild =>
+      KeyedSubtree(key: _formAnchorKey, child: widget.child);
+
   bool isOpenFor(FocusNode focusNode) => _session?.focusNode == focusNode;
 
-  void _captureHostScroll(OnscreenFieldSession session) {
-    final ctx = session.focusNode.context;
-    if (ctx == null) return;
+  double? _capturedScrollOffset(FocusNode focusNode) {
+    final ctx = focusNode.context;
+    if (ctx == null) return null;
     final scrollable = Scrollable.maybeOf(ctx);
-    if (scrollable == null) return;
-    _hostScrollOffsetBeforeKeyboard = scrollable.position.pixels;
+    if (scrollable == null) return null;
+    if (!scrollable.position.hasContentDimensions) return null;
+    return scrollable.position.pixels;
+  }
+
+  /// [TextField] auto-scrolls the enclosing [Scrollable] to show the caret when
+  /// it gains focus. Override that animation by jumping back to [offset] on the
+  /// next two frames so the form does not visually shift when the keyboard
+  /// opens.
+  void _pinScrollOffset(FocusNode focusNode, double offset) {
+    void apply() {
+      if (!mounted) return;
+      final ctx = focusNode.context;
+      if (ctx == null) return;
+      final scrollable = Scrollable.maybeOf(ctx);
+      if (scrollable == null || !scrollable.position.hasContentDimensions) {
+        return;
+      }
+      final target = offset.clamp(0.0, scrollable.position.maxScrollExtent);
+      if ((scrollable.position.pixels - target).abs() > 0.5) {
+        scrollable.position.jumpTo(target);
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      apply();
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    });
   }
 
   void _restoreHostScrollAfterDismiss(FocusNode fieldFocus, double? offset) {
@@ -149,18 +184,33 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       return;
     }
 
-    final previous = _session;
-    session.focusNode.requestFocus();
+    final isFirstOpen = _session == null;
+    final scrollBefore = _capturedScrollOffset(session.focusNode);
 
-    if (_session == null) {
-      _captureHostScroll(session);
+    final previous = _session;
+
+    // Important: we do NOT call `session.focusNode.requestFocus()` here.
+    // Focusing the field would make Flutter's [EditableText] call
+    // `_showCaretOnScreen()`, which programmatically scrolls the enclosing
+    // [Scrollable] to keep the caret in view — that's what was causing the
+    // "blink" / scroll jump when the keyboard opened. The keyboard panel owns
+    // its own preview text field (with its own focus/caret) and the host
+    // field receives committed text on Enter, so it never needs focus.
+
+    if (isFirstOpen) {
+      _hostScrollOffsetBeforeKeyboard = scrollBefore;
     }
 
     if (!identical(previous, session)) {
       setState(() => _session = session);
     }
 
-    clearOnscreenKeyboardValidation(session.focusNode);
+    // Defensive: even though we no longer focus the field, the previous
+    // pin guard still helps if any code path triggers a scroll change while
+    // the keyboard is opening.
+    if (scrollBefore != null) {
+      _pinScrollOffset(session.focusNode, scrollBefore);
+    }
   }
 
   void _dismiss() {
@@ -171,7 +221,6 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
     final fieldFocus = previous.focusNode;
     setState(() => _session = null);
 
-    clearOnscreenKeyboardValidation(previous.focusNode);
     previous.focusNode.unfocus();
 
     final primary = FocusManager.instance.primaryFocus;
@@ -192,7 +241,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
   @override
   Widget build(BuildContext context) {
     if (!useCustomOnscreenKeyboard) {
-      return widget.child;
+      return _anchoredChild;
     }
 
     final session = _session;
@@ -223,7 +272,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
 
   Widget _buildDraggableShell(OnscreenFieldSession? session) {
     if (session == null) {
-      return widget.child;
+      return _anchoredChild;
     }
 
     return DraggableDynamicKeyboard(
@@ -245,7 +294,7 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       pushContent: false,
       onDismiss: _dismiss,
       onEnterPressed: _onEnter,
-      child: _wrapLockedContent(widget.child),
+      child: _wrapLockedContent(_anchoredChild),
     );
   }
 
@@ -254,8 +303,15 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
       onTapOutside: (_) => _dismiss(),
       child: Column(
         children: [
-          Expanded(child: _wrapLockedContent(widget.child)),
-          if (session != null) _buildActiveKeyboard(session),
+          Expanded(child: _wrapLockedContent(_anchoredChild)),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: session != null
+                ? _buildActiveKeyboard(session)
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );

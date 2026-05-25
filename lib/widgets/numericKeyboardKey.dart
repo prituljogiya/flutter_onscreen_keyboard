@@ -72,14 +72,14 @@ class _NumericKeyState extends State<NumericKey>
             boxShadow: _isPressed
                 ? [
                     BoxShadow(
-                      color: t.shadowColor.withOpacity(0.3),
+                      color: t.shadowColor.withValues(alpha: 0.3),
                       blurRadius: 2,
                       offset: const Offset(0, 1),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: t.shadowColor.withOpacity(0.4),
+                      color: t.shadowColor.withValues(alpha: 0.4),
                       blurRadius: t.keyElevation * 2,
                       offset: Offset(0, t.keyElevation),
                     ),
@@ -101,14 +101,14 @@ class _NumericKeyState extends State<NumericKey>
             boxShadow: _isPressed
                 ? [
                     BoxShadow(
-                      color: t.shadowColor.withOpacity(0.3),
+                      color: t.shadowColor.withValues(alpha: 0.3),
                       blurRadius: 2,
                       offset: const Offset(0, 1),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: t.shadowColor.withOpacity(0.4),
+                      color: t.shadowColor.withValues(alpha: 0.4),
                       blurRadius: t.keyElevation * 2,
                       offset: Offset(0, t.keyElevation),
                     ),

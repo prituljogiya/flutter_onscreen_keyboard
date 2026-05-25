@@ -215,14 +215,14 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
             boxShadow: _isPressed
                 ? [
               BoxShadow(
-                color: widget.theme.shadowColor.withOpacity(0.3),
+                color: widget.theme.shadowColor.withValues(alpha: 0.3),
                 blurRadius: 2,
                 offset: const Offset(0, 1),
               ),
             ]
                 : [
               BoxShadow(
-                color: widget.theme.shadowColor.withOpacity(0.4),
+                color: widget.theme.shadowColor.withValues(alpha: 0.4),
                 blurRadius: widget.theme.keyElevation * 2,
                 offset: Offset(0, widget.theme.keyElevation),
               ),
@@ -241,7 +241,7 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
                         maxLines: 1,
                         style: TextStyle(
                           color: widget.theme.specialKeyTextColor
-                              .withOpacity(topOpacity),
+                              .withValues(alpha: topOpacity),
                           fontSize: topFontSize,
                           fontWeight: topWeight,
                           height: 1,
@@ -258,7 +258,7 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
                         maxLines: 1,
                         style: TextStyle(
                           color: widget.theme.keyTextColor
-                              .withOpacity(bottomOpacity),
+                              .withValues(alpha: bottomOpacity),
                           fontSize: bottomFontSize,
                           fontWeight: bottomWeight,
                           height: 1,

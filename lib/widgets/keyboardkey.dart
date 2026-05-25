@@ -239,7 +239,7 @@ class _KeyboardKeyState extends State<KeyboardKey>
         width: double.infinity,
         height: 4,
         decoration: BoxDecoration(
-          color: textColor.withOpacity(0.3),
+          color: textColor.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(2),
         ),
         child: Text(
@@ -306,14 +306,14 @@ class _KeyboardKeyState extends State<KeyboardKey>
             boxShadow: _isPressed
                 ? [
                     BoxShadow(
-                      color: widget.theme.shadowColor.withOpacity(0.3),
+                      color: widget.theme.shadowColor.withValues(alpha: 0.3),
                       blurRadius: 2,
                       offset: const Offset(0, 1),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: widget.theme.shadowColor.withOpacity(0.4),
+                      color: widget.theme.shadowColor.withValues(alpha: 0.4),
                       blurRadius: widget.theme.keyElevation * 2,
                       offset: Offset(0, widget.theme.keyElevation),
                     ),

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
-import 'core/keyboard_theme_resolver.dart';
 import 'core/onscreen_keyboard_config.dart';
 import 'core/theme_controller.dart';
 
@@ -27,11 +25,22 @@ export 'core/keyboard_theme_resolver.dart';
 ///       replaceDefaultTheme: true,
 ///     ),
 ///   );
-///   runApp(GetMaterialApp(home: OnscreenKeyboardBinding(child: MyApp())));
+///   runApp(const OnscreenKeyboardBinding(child: MyApp()));
 /// }
 /// ```
 abstract final class FlutterOnscreenKeyboard {
   FlutterOnscreenKeyboard._();
+
+  static ThemeController? _themeController;
+
+  /// Process-wide [ThemeController]. Created lazily by [ensureInitialized].
+  static ThemeController get themeController {
+    final tc = _themeController;
+    if (tc != null) return tc;
+    final created = ThemeController();
+    _themeController = created;
+    return created;
+  }
 
   static OnscreenKeyboardConfig get config => globalOnscreenKeyboardConfig;
 
@@ -45,24 +54,31 @@ abstract final class FlutterOnscreenKeyboard {
   }
 
   static void ensureInitialized() {
-    if (!Get.isRegistered<ThemeController>()) {
-      Get.put(ThemeController(), permanent: true);
-    }
+    _themeController ??= ThemeController();
     _applyConfigToThemeController();
   }
 
   static void _applyConfigToThemeController() {
-    if (!Get.isRegistered<ThemeController>()) return;
+    final tc = _themeController;
+    if (tc == null) return;
     final cfg = globalOnscreenKeyboardConfig;
     final theme = cfg.keyboardTheme;
     if (theme != null && cfg.replaceDefaultTheme) {
-      Get.find<ThemeController>().updateTheme(theme);
+      tc.updateTheme(theme);
     }
   }
 
+  /// Disposes the shared [ThemeController] and resets global config. Intended
+  /// for test isolation; do not call from app code.
+  @visibleForTesting
+  static void resetForTest() {
+    _themeController?.dispose();
+    _themeController = null;
+    setGlobalOnscreenKeyboardConfig(OnscreenKeyboardConfig.defaults);
+  }
 }
 
-/// Wrap your [GetMaterialApp] [home] (or the whole app tree) so the plugin
+/// Wrap your [MaterialApp] [home] (or the whole app tree) so the plugin
 /// registers its dependencies once. Safe to place at the root.
 class OnscreenKeyboardBinding extends StatelessWidget {
   const OnscreenKeyboardBinding({super.key, required this.child});
@@ -72,6 +88,24 @@ class OnscreenKeyboardBinding extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     FlutterOnscreenKeyboard.ensureInitialized();
-    return child;
+    return OnscreenKeyboardThemeScope(
+      controller: FlutterOnscreenKeyboard.themeController,
+      child: child,
+    );
+  }
+}
+
+/// Inherited [ThemeController] for keyboard widgets to listen to.
+class OnscreenKeyboardThemeScope extends InheritedNotifier<ThemeController> {
+  const OnscreenKeyboardThemeScope({
+    super.key,
+    required ThemeController controller,
+    required super.child,
+  }) : super(notifier: controller);
+
+  static ThemeController? maybeOf(BuildContext context) {
+    final scope =
+        context.dependOnInheritedWidgetOfExactType<OnscreenKeyboardThemeScope>();
+    return scope?.notifier;
   }
 }

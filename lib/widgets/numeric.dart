@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
 import '../core/numeric_range.dart';
-import '../core/onscreen_keyboard_validation.dart';
 import '../core/preview_strip_scroll.dart';
 import '../core/numericKeyController.dart';
 import '../core/theme_controller.dart';
@@ -37,7 +35,7 @@ class NumericKeyboard extends StatefulWidget {
   /// Called when the user taps close (X) or the host dismisses the panel.
   final VoidCallback onDismiss;
 
-  /// When set, used instead of [ThemeController.keyboardTheme] (no GetX listen).
+  /// When set, used instead of [ThemeController.keyboardTheme] (skips listener).
   final KeyboardTheme? keyboardTheme;
 
   const NumericKeyboard({
@@ -105,11 +103,21 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   }
 
   void _onHostFieldFocusChanged() {
-    if (!widget.focusNode.hasFocus || !mounted || _suppressPreviewRefocus) {
-      return;
-    }
+    if (!mounted || _suppressPreviewRefocus) return;
+    if (!widget.focusNode.hasFocus) return;
     _ensurePreviewSelectionAtEnd();
     if (_previewFocusNode.canRequestFocus) {
+      _previewFocusNode.requestFocus();
+    }
+  }
+
+  /// Take preview focus on mount so typing works even when the host field is
+  /// never focused (the host's [OnscreenKeyboardHost] no longer focuses fields
+  /// in order to avoid [TextField]'s auto-scroll-to-caret jump).
+  void _grabPreviewFocus() {
+    if (!mounted || _suppressPreviewRefocus) return;
+    _ensurePreviewSelectionAtEnd();
+    if (_previewFocusNode.canRequestFocus && !_previewFocusNode.hasFocus) {
       _previewFocusNode.requestFocus();
     }
   }
@@ -135,9 +143,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     _inputController.addListener(_syncPreviewScroll);
     _ensurePreviewSelectionAtEnd();
     _initController();
-    if (widget.focusNode.hasFocus) {
-      _onHostFieldFocusChanged();
-    }
+    _grabPreviewFocus();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _syncPreviewScroll();
     });
@@ -146,33 +152,17 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   String _seedText(String committed) => committed;
 
   void _initController() {
-    final tag = widget.focusNode.hashCode.toString();
-    if (Get.isRegistered<NumericKeyboardController>(tag: tag)) {
-      _keyboardController = Get.find<NumericKeyboardController>(tag: tag);
-      _keyboardController.rebind(
-        textController: _inputController,
-        previewFocusNode: _previewFocusNode,
-        validator: _combinedValidate,
-        allowDecimalInput: widget.allowDecimalInput,
-        integersOnly: widget.integersOnly,
-        minValue: widget.minValue,
-        maxValue: widget.maxValue,
-        maxLength: widget.maxLength,
-      );
-    } else {
-      _keyboardController = NumericKeyboardController(
-        textController: _inputController,
-        focusNode: widget.focusNode,
-        previewFocusNode: _previewFocusNode,
-        validator: _combinedValidate,
-        allowDecimalInput: widget.allowDecimalInput,
-        integersOnly: widget.integersOnly,
-        minValue: widget.minValue,
-        maxValue: widget.maxValue,
-        maxLength: widget.maxLength,
-      );
-      Get.put(_keyboardController, tag: tag);
-    }
+    _keyboardController = NumericKeyboardController(
+      textController: _inputController,
+      focusNode: widget.focusNode,
+      previewFocusNode: _previewFocusNode,
+      validator: _combinedValidate,
+      allowDecimalInput: widget.allowDecimalInput,
+      integersOnly: widget.integersOnly,
+      minValue: widget.minValue,
+      maxValue: widget.maxValue,
+      maxLength: widget.maxLength,
+    );
   }
 
   void _runKeyAction(VoidCallback action) {
@@ -214,15 +204,12 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     if (widget.focusNode != oldWidget.focusNode) {
       oldWidget.focusNode.removeListener(_onHostFieldFocusChanged);
       widget.focusNode.addListener(_onHostFieldFocusChanged);
-      releaseOnscreenKeyboardControllers(oldWidget.focusNode);
+      _keyboardController.dispose();
       _initController();
-      _keyboardController.clearValidation();
       if (widget.commitOnEnterOnly) {
         _reseedStagingFromCommitted();
       }
-      if (widget.focusNode.hasFocus) {
-        _onHostFieldFocusChanged();
-      }
+      _grabPreviewFocus();
     }
     if (widget.controller != oldWidget.controller && widget.commitOnEnterOnly) {
       _keyboardController.clearValidation();
@@ -248,10 +235,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     if (widget.minValue != oldWidget.minValue ||
         widget.maxValue != oldWidget.maxValue ||
         widget.validator != oldWidget.validator) {
-      final tag = widget.focusNode.hashCode.toString();
-      if (Get.isRegistered<NumericKeyboardController>(tag: tag)) {
-        Get.find<NumericKeyboardController>(tag: tag).validateNow();
-      }
+      _keyboardController.validateNow();
     }
   }
 
@@ -260,10 +244,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     _teardown = true;
     widget.focusNode.removeListener(_onHostFieldFocusChanged);
     _inputController.removeListener(_syncPreviewScroll);
-    final tag = widget.focusNode.hashCode.toString();
-    if (Get.isRegistered<NumericKeyboardController>(tag: tag)) {
-      Get.delete<NumericKeyboardController>(tag: tag);
-    }
+    _keyboardController.dispose();
     _previewScrollController.dispose();
     _previewFocusNode.dispose();
     if (_ownsInputController) {
@@ -286,6 +267,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   Widget build(BuildContext context) {
     return buildKeyboardWithResolvedTheme(
       widgetOverride: widget.keyboardTheme,
+      context: context,
       builder: (theme) => _buildWithTheme(context, theme),
     );
   }
@@ -295,25 +277,25 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
         MediaQuery.orientationOf(context) == Orientation.landscape;
     final hasBounds = widget.minValue != null || widget.maxValue != null;
 
-    return Obx(() {
-      final error = _keyboardController.validationErrorRx.value;
-      final errorText = error != null && error.trim().isNotEmpty
-          ? error.trim()
-          : null;
-      final showError = errorText != null;
-      final showBounds = hasBounds;
+    return ListenableBuilder(
+      listenable: _keyboardController,
+      builder: (context, _) {
+        final error = _keyboardController.validationError;
+        final errorText = error != null && error.trim().isNotEmpty
+            ? error.trim()
+            : null;
+        final showError = errorText != null;
+        final showBounds = hasBounds;
 
-      final keysHeight = MediaQuery.sizeOf(context).height *
-          KeyboardChromeLayout.numericKeysFraction(isLandscape);
-      final panelHeight = KeyboardChromeLayout.numericPanelHeight(
-        context: context,
-        isLandscape: isLandscape,
-        showError: showError,
-        showBounds: showBounds,
-        overrideHeight: widget.height,
-      );
+        final panelHeight = KeyboardChromeLayout.numericPanelHeight(
+          context: context,
+          isLandscape: isLandscape,
+          showError: showError,
+          showBounds: showBounds,
+          overrideHeight: widget.height,
+        );
 
-      return Container(
+        return Container(
         height: panelHeight,
         decoration: BoxDecoration(color: theme.backgroundColor),
         child: Column(
@@ -465,7 +447,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             alignment: Alignment.centerLeft,
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               border: const Border(
                 bottom: BorderSide(
                   color: Colors.white24,

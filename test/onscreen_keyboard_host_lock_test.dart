@@ -1,22 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_onscreen_keyboard/custom_keyboard.dart';
-import 'package:flutter_onscreen_keyboard/core/theme_controller.dart';
-import 'package:flutter_onscreen_keyboard/widgets/onscreen_keyboard_host.dart';
-import 'package:flutter_onscreen_keyboard/widgets/onscreen_text_field.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 
 void main() {
   setUp(() {
-    Get.testMode = true;
-    Get.reset();
+    FlutterOnscreenKeyboard.resetForTest();
     FlutterOnscreenKeyboard.configure(
       const OnscreenKeyboardConfig(useCustomKeyboard: true),
     );
-    Get.put(ThemeController());
   });
 
-  tearDown(Get.reset);
+  tearDown(FlutterOnscreenKeyboard.resetForTest);
 
   testWidgets('does not switch field until keyboard is closed', (
     WidgetTester tester,
@@ -36,23 +30,25 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      GetMaterialApp(
-        home: Scaffold(
-          body: OnscreenKeyboardHost(
-            child: Column(
-              children: [
-                OnscreenTextField(
-                  fieldKey: const ValueKey<String>('field_name'),
-                  controller: nameController,
-                  focusNode: nameFocus,
-                ),
-                OnscreenTextField(
-                  fieldKey: const ValueKey<String>('field_age'),
-                  controller: ageController,
-                  focusNode: ageFocus,
-                  keyboardType: TextInputType.number,
-                ),
-              ],
+      OnscreenKeyboardBinding(
+        child: MaterialApp(
+          home: Scaffold(
+            body: OnscreenKeyboardHost(
+              child: Column(
+                children: [
+                  OnscreenTextField(
+                    fieldKey: const ValueKey<String>('field_name'),
+                    controller: nameController,
+                    focusNode: nameFocus,
+                  ),
+                  OnscreenTextField(
+                    fieldKey: const ValueKey<String>('field_age'),
+                    controller: ageController,
+                    focusNode: ageFocus,
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

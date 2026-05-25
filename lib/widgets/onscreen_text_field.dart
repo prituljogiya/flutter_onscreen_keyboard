@@ -109,6 +109,14 @@ class _OnscreenTextFieldState extends State<OnscreenTextField> {
         scope.hasOpenKeyboard &&
         !scope.isOpenFor(widget.focusNode);
 
+    // The field is rendered as a regular [TextField] but we intentionally
+    // prevent it from receiving pointer events directly. Flutter's
+    // [TextField] (via its internal gesture recognizer) focuses itself on
+    // tap, and once focused, [EditableText] schedules a "scroll caret into
+    // view" animation on the enclosing [Scrollable] — that's the source of
+    // the "blink" / form jump when the on-screen keyboard opens. We absorb
+    // the pointer at the field and route the tap through our own
+    // [GestureDetector] so the field never gets focus.
     final field = TextField(
       key: widget.fieldKey,
       controller: widget.controller,
@@ -118,19 +126,24 @@ class _OnscreenTextFieldState extends State<OnscreenTextField> {
       showCursor: widget.showCursor && !blocked,
       maxLines: widget.maxLines,
       maxLength: widget.maxLength,
-      onTap: blocked
-          ? null
-          : () {
-              if (OnscreenKeyboardHost.isOpenFor(context, widget.focusNode)) {
-                return;
-              }
-              OnscreenKeyboardHost.activate(context, _session);
-            },
       decoration: widget.decoration,
     );
 
-    if (!blocked) return field;
+    final absorbed = AbsorbPointer(child: field);
 
-    return AbsorbPointer(child: field);
+    if (blocked) {
+      return absorbed;
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        if (OnscreenKeyboardHost.isOpenFor(context, widget.focusNode)) {
+          return;
+        }
+        OnscreenKeyboardHost.activate(context, _session);
+      },
+      child: absorbed,
+    );
   }
 }

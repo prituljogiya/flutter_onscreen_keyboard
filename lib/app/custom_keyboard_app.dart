@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../core/theme_controller.dart';
+
 import '../flutter_onscreen_keyboard_init.dart';
 
-/// Minimal runnable app: one [GetMaterialApp] whose `home` is [child].
+/// Minimal runnable app: one [MaterialApp] whose `home` is [child].
 ///
-/// For a real app you already have a root [GetMaterialApp], use
+/// For a real app you already have a root [MaterialApp], use
 /// [FlutterOnscreenKeyboard.ensureInitialized] in `main` and/or wrap with
 /// [OnscreenKeyboardBinding] instead of this widget.
 class CustomKeyboardApp extends StatelessWidget {
@@ -20,16 +19,20 @@ class CustomKeyboardApp extends StatelessWidget {
   Widget build(BuildContext context) {
     FlutterOnscreenKeyboard.ensureInitialized();
 
-    return GetBuilder<ThemeController>(
-      builder: (themeController) {
-        return GetMaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: themeController.lightTheme,
-          darkTheme: themeController.darkTheme,
-          themeMode: themeController.themeMode,
-          home: child,
-        );
-      },
+    final controller = FlutterOnscreenKeyboard.themeController;
+    return OnscreenKeyboardBinding(
+      child: ListenableBuilder(
+        listenable: controller,
+        builder: (context, _) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: controller.lightTheme,
+            darkTheme: controller.darkTheme,
+            themeMode: controller.themeMode,
+            home: child,
+          );
+        },
+      ),
     );
   }
 }
