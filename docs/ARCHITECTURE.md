@@ -411,7 +411,20 @@ The keyboard type chooses the panel:
 | Exact length (e.g. PIN) | `maxLength: 4` |
 | Cap fractional digits (e.g. `0.12` ok, `0.123` rejected) | `maxFractionDigits: 2` |
 
-The numeric pad rejects keystrokes that would exceed `maxValue` even before `validator` runs — see `NumericRange.canAcceptDigit`.
+**Range validation is partial per-keystroke.** The user can type a value greater than `maxValue` *within the digit width of `max`* (e.g. for `max: 500`, anything from `1` to `999` is typeable). When they do:
+
+- A live error appears ("Must be ≤ 500", "Whole numbers only", etc.).
+- The Enter key is blocked while the error is showing.
+- Backspacing back into range clears the error and re-enables Enter.
+
+The `min` error is suppressed *during* typing (the user is still building the number); it only appears on Enter. The `max` error appears live so the user can correct it.
+
+Per-keystroke rejection happens for:
+
+- `maxLength` (total preview chars; e.g. a 4-digit PIN)
+- **Whole-digit width of `max`** — e.g. `max: 500` caps the integer part at 3 digits, so `5555` is silently rejected (not even a live error fires) but `555` is typeable and triggers the live "Must be ≤ 500" error.
+- `maxFractionDigits` (when set explicitly; otherwise fractional length is unlimited)
+- The decimal key `.` when `integersOnly: true` or `allowDecimalInput: false`
 
 > **Fractional digits are unlimited by default.** `minValue` / `maxValue` only enforce the numeric value — they do **not** impose any implicit cap on how many digits the user can type after `.`. So a `0.5–500` weight field happily accepts `0.123456789` (still ≤ 500). To cap fractional length, opt in with `maxFractionDigits`:
 >

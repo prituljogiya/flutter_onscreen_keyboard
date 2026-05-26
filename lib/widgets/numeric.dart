@@ -189,9 +189,16 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   }
 
   String? _rangeValidate(String value, {bool allowIncomplete = true}) {
+    // While the user is still typing (allowIncomplete=true) we intentionally
+    // do NOT enforce [minValue] — the user is mid-typing and is on their way
+    // to a valid value (e.g. typing "5" → "55" → "550" in a 10-500 field).
+    // Showing "Must be >= 10" the moment they press the first digit is
+    // annoying and unfixable for them until they type another digit. The
+    // strict Enter path passes [allowIncomplete] = false, at which point the
+    // full range check (including min) runs.
     return NumericRange.validate(
       value,
-      min: widget.minValue,
+      min: allowIncomplete ? null : widget.minValue,
       max: widget.maxValue,
       integersOnly: widget.integersOnly,
       allowIncomplete: allowIncomplete,

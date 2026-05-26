@@ -116,18 +116,31 @@ void main() {
       c2.dispose();
     });
 
-    test('insertDigit stops at digit limit implied by max', () {
+    test(
+        'insertDigit lets the user type > max within the digit cap; '
+        'extra digits beyond max width are silently rejected',
+        () {
+      // max=59 → 2-digit cap. The user can still type "99" so the live
+      // validator can flash "Must be <= 59". A 3rd digit would exceed the
+      // digit-count cap and is silently rejected.
       final c2 = NumericKeyboardController(
         textController: textController,
         focusNode: focusNode,
         maxValue: 59,
         integersOnly: true,
+        validator: (v) => NumericRange.validate(v, max: 59, integersOnly: true),
       );
-      c2.insertDigit('5');
       c2.insertDigit('9');
-      expect(textController.text, '59');
       c2.insertDigit('9');
-      expect(textController.text, '59');
+      expect(textController.text, '99');
+      expect(c2.validationError, 'Must be <= 59');
+      // 3rd digit would exceed the 2-digit cap → silently rejected.
+      c2.insertDigit('9');
+      expect(textController.text, '99');
+      expect(c2.validationError, 'Must be <= 59');
+      c2.backspace();
+      expect(textController.text, '9');
+      expect(c2.validationError, isNull);
       c2.dispose();
     });
 

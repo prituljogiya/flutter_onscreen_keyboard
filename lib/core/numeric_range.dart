@@ -180,17 +180,21 @@ abstract final class NumericRange {
   ///
   /// Reject rules, in order:
   /// 1. [maxLength] cap (e.g. an access code that must be exactly 4 chars).
-  /// 2. Explicit [maxFractionDigits] cap. By design, [min] / [max] do **not**
-  ///    impose any fractional limit on their own — the user can type as many
-  ///    digits after `.` as they like unless [maxFractionDigits] is set. To
-  ///    cap fractional length you must opt in explicitly.
-  /// 3. Numeric value > [max] — this catches "999" in a 1-200 field and
-  ///    "500.1" in a 0.5-500 field. The whole-digit width of [max] is
-  ///    enforced implicitly by this rule (e.g. "1000" > 500 → rejected).
+  /// 2. Whole-digit cap derived from [max] — the integer part of [newText]
+  ///    is limited to the digit width of [max]. So with `max: 500` the user
+  ///    can type any 1–3-digit integer (`555` is typeable so they see the
+  ///    "Must be <= 500" error), but `5555` is silently rejected because
+  ///    even the digit count already exceeds the bound.
+  /// 3. Explicit [maxFractionDigits] cap. [min] / [max] do **not** impose
+  ///    a fractional limit on their own — fractional length is unlimited
+  ///    unless [maxFractionDigits] is set.
   ///
-  /// Note: [min] is intentionally not enforced per-keystroke so the user can
-  /// build up to a valid number (e.g. typing "0", then "0.", then "0.5" in a
-  /// 0.5-500 field). The full `min` check runs in [validate] on Enter.
+  /// The numeric value of [newText] is intentionally NOT compared against
+  /// [max] here. That check lives in the live validator so the user sees
+  /// an actionable "Must be <= max" message and Enter is blocked until they
+  /// back off. [min] is not enforced at all per-keystroke — the user might
+  /// still be building up to a valid number (e.g. "5" → "55" → "550" in a
+  /// 10-500 field). The full `min` check runs in [validate] on Enter.
   static bool canAcceptDigit({
     required String currentText,
     required String digit,
@@ -209,16 +213,27 @@ abstract final class NumericRange {
 
     if (!isWithinMaxLength(newText, maxLength)) return false;
 
+    if (max != null && !_isWithinMaxWholeDigits(newText, max)) {
+      return false;
+    }
+
     if (!integersOnly &&
         maxFractionDigits != null &&
         !_isWithinMaxFractionDigits(newText, maxFractionDigits)) {
       return false;
     }
 
-    if (max != null && !_isAtOrBelowMax(newText, max)) {
-      return false;
-    }
     return true;
+  }
+
+  /// True when the integer part of [newText] does not exceed the digit
+  /// width of [max] (e.g. `max: 500` allows up to 3 whole digits).
+  static bool _isWithinMaxWholeDigits(String newText, num max) {
+    final trimmed = newText.trim();
+    if (trimmed.isEmpty) return true;
+    final dot = trimmed.indexOf('.');
+    final intPart = dot < 0 ? trimmed : trimmed.substring(0, dot);
+    return intPart.length <= wholeNumberDigitsForBound(max);
   }
 
   /// True when [newText] has at most [maxFractionDigits] digits after `.`.

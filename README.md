@@ -274,6 +274,7 @@ Anything else in `lib/` is implementation detail and may evolve — only import 
 | Keyboard opens but the form jumps / blinks on tap | Make sure you used `OnscreenTextField`, not a plain `TextField` (the host relies on it to intercept tap focus) |
 | In landscape, keyboard overlaps the field instead of appearing in a draggable panel | That's expected — the panel is draggable. Pan it to where you want; the position is remembered for the session |
 | Numeric field accepts unlimited digits after `.` | This is the default. Set `maxFractionDigits: N` on the `OnscreenTextField` to cap it. `minValue` / `maxValue` only constrain the numeric value, not the fractional length. |
+| Numeric field lets me type values outside `min/max` | Inside the digit width of `max` it does (e.g. for `max: 500` you can type `555` so you see the "Must be ≤ 500" error). Beyond that width — `5555` for the same field — keystrokes are silently rejected. Enter stays blocked until the value is back in range. |
 | Want to switch theme dynamically | Call `FlutterOnscreenKeyboard.themeController.updateTheme(...)` from anywhere |
 
 ---

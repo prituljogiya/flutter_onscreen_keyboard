@@ -340,12 +340,18 @@ void main() {
       expect(find.text('Must be <= 5.5'), findsOneWidget);
     });
 
-    testWidgets('Rating rejects value below min while typing', (tester) async {
+    testWidgets(
+        'Rating does not show live min error while user is still typing',
+        (tester) async {
+      // The "Must be >= min" error is intentionally suppressed during
+      // typing — the user might still be building up to a valid value
+      // (e.g. "5" in a 10-500 field is mid-typing for "500"). The strict
+      // min check still runs on Enter.
       bindViewport(tester);
       await pumpKeyboardDemo(tester);
       await tapField(tester, 'field_rating');
       await typeNumber(tester, '2');
-      expect(find.text('Must be >= 3.1'), findsOneWidget);
+      expect(find.text('Must be >= 3.1'), findsNothing);
     });
 
     testWidgets('Phone has no min/max row', (tester) async {

@@ -93,7 +93,19 @@ void main() {
       );
     });
 
-    test('canAcceptDigit blocks extra whole digits for max 59', () {
+    test('canAcceptDigit caps whole digits to width of max', () {
+      // max: 59 → 2 whole digits allowed.
+      // "5" + "9" → "59" (accepted, 2 digits).
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '5',
+          digit: '9',
+          max: 59,
+          integersOnly: true,
+        ),
+        isTrue,
+      );
+      // "59" + "9" → "599" (3 digits > 2) → REJECTED silently.
       expect(
         NumericRange.canAcceptDigit(
           currentText: '59',
@@ -136,8 +148,11 @@ void main() {
       );
     });
 
-    test('canAcceptDigit rejects keystroke that would exceed max value', () {
-      // Quantity 1-200: "9" alone is fine, "99" is fine, but "999" > 200.
+    test(
+        'canAcceptDigit lets the user type values > max within the digit cap',
+        () {
+      // Quantity 1-200: 3-digit cap. "999" is typeable so the live error
+      // can show, but a 4th digit is silently rejected.
       expect(
         NumericRange.canAcceptDigit(
           currentText: '99',
@@ -146,40 +161,45 @@ void main() {
           max: 200,
           integersOnly: true,
         ),
-        isFalse,
+        isTrue,
       );
-
-      // Weight 0.5-500: "501" > 500.
       expect(
         NumericRange.canAcceptDigit(
-          currentText: '50',
-          digit: '1',
+          currentText: '999',
+          digit: '9',
+          min: 1,
+          max: 200,
+          integersOnly: true,
+        ),
+        isFalse,
+      );
+      expect(
+        NumericRange.validate('999', min: 1, max: 200, integersOnly: true),
+        'Must be <= 200',
+      );
+
+      // Weight 0.5-500: 3-digit cap on whole part. "555" typeable, "5555" no.
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '55',
+          digit: '5',
+          min: 0.5,
+          max: 500,
+        ),
+        isTrue,
+      );
+      expect(
+        NumericRange.canAcceptDigit(
+          currentText: '555',
+          digit: '5',
           min: 0.5,
           max: 500,
         ),
         isFalse,
       );
-
-      // Weight 0.5-500: "500.1" > 500.
       expect(
-        NumericRange.canAcceptDigit(
-          currentText: '500.',
-          digit: '1',
-          min: 0.5,
-          max: 500,
-        ),
-        isFalse,
-      );
-
-      // Rating 3.1-5.5: "5.6" > 5.5.
-      expect(
-        NumericRange.canAcceptDigit(
-          currentText: '5.',
-          digit: '6',
-          min: 3.1,
-          max: 5.5,
-        ),
-        isFalse,
+        NumericRange.validate('555', min: 0.5, max: 500),
+        'Must be <= 500',
       );
     });
 
