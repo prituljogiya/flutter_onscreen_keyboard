@@ -56,6 +56,32 @@ void main() {
       c.dispose();
     });
 
+    test('typing clears a previously-surfaced validation error', () {
+      // Repro of the user-visible bug: press Enter on empty/short text → the
+      // "At least 3 characters" error appears; the user then starts typing
+      // and the stale error must disappear immediately.
+      final text = TextEditingController();
+      final c = newController(text: text, minLength: 3);
+
+      expect(c.enter(), isFalse);
+      expect(c.shouldShowValidationError, isTrue);
+      expect(c.validationError, 'At least 3 characters');
+
+      c.insertText('a');
+      expect(c.shouldShowValidationError, isFalse,
+          reason: 'typing must clear the stale alpha error');
+      expect(c.validationError, isNull);
+
+      // Backspace also clears the error.
+      expect(c.enter(), isFalse); // still short → re-shows error
+      expect(c.shouldShowValidationError, isTrue);
+      c.backspace();
+      expect(c.shouldShowValidationError, isFalse,
+          reason: 'backspace must clear the stale alpha error too');
+
+      c.dispose();
+    });
+
     test('empty value blocks Enter and keeps validation visible', () {
       final text = TextEditingController();
       final c = newController(text: text);

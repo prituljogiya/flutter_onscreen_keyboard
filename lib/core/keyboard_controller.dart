@@ -167,6 +167,10 @@ class KeyboardController extends ChangeNotifier {
     }
 
     _applyEditingValue(newText, newSelectionOffset);
+    // The user is actively editing — any error from a previous Enter press
+    // should disappear immediately so the user gets a clean preview while
+    // typing. The full minLength / validator check runs again on Enter.
+    clearValidation();
 
     // Shift is one-shot; Caps stays until the user taps Caps again (or Caps lock off).
     if (_isShiftActive) {
@@ -204,6 +208,8 @@ class KeyboardController extends ChangeNotifier {
       );
       _applyEditingValue(newText, selection.start - 1);
     }
+    // Mirror insertText: any user edit clears the stale validation error.
+    clearValidation();
   }
 
   /// Applies text + caret in one [TextEditingValue] so the preview [TextField]
