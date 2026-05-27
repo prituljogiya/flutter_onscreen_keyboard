@@ -5,6 +5,7 @@ import '../flutter_onscreen_keyboard_init.dart';
 import 'custom_keyboard.dart';
 import 'draggable.dart';
 import 'numeric.dart';
+import 'onscreen_keyboard_field_rules.dart';
 
 /// Root-level widget that auto-attaches the on-screen keyboard to **every**
 /// vanilla [TextField] / [TextFormField] in the app, without per-field or
@@ -180,20 +181,31 @@ class _OnscreenKeyboardAttachmentState
     if (!_bridge.isVisible) {
       return widget.child;
     }
+    final rules =
+        OnscreenKeyboardFieldRules.lookup(_bridge.focusNode);
+    final maxLength = rules?.maxLength;
+
     return DraggableDynamicKeyboard(
       // The bridge's useNumericKeyboard flag flips based on the active
       // field's TextInputType, so the SAME draggable widget renders the
       // numeric pad for `number` / `phone` fields and QWERTY for everything
       // else. The draggable behavior is identical in both cases.
       key: ValueKey<String>(
-        'auto_dk_${_bridge.useNumericKeyboard}_${_bridge.showDecimalKey}_${_bridge.integersOnly}',
+        'auto_dk_${_bridge.useNumericKeyboard}_${_bridge.showDecimalKey}_${_bridge.integersOnly}_$maxLength',
       ),
       controller: _bridge.controller,
       focusNode: _bridge.focusNode,
       commitOnEnterOnly: widget.commitOnEnterOnly,
       useNumericKeyboard: _bridge.useNumericKeyboard,
-      numericAllowDecimalInput: _bridge.showDecimalKey,
-      numericIntegersOnly: _bridge.integersOnly,
+      minLength: rules?.minLength,
+      maxLength: maxLength,
+      validator: rules?.validator,
+      numericMinValue: rules?.minValue,
+      numericMaxValue: rules?.maxValue,
+      numericAllowDecimalInput:
+          rules?.allowDecimalInput ?? _bridge.showDecimalKey,
+      numericIntegersOnly: rules?.integersOnly ?? _bridge.integersOnly,
+      numericMaxFractionDigits: rules?.maxFractionDigits,
       widthFactor: widget.draggableWidthFactor,
       heightFactor: widget.draggableHeightFactor,
       initialPosition: widget.draggableInitialPosition,
@@ -232,17 +244,26 @@ class _OnscreenKeyboardAttachmentState
   }
 
   Widget _buildDockedPanel() {
+    final rules =
+        OnscreenKeyboardFieldRules.lookup(_bridge.focusNode);
+    final maxLength = rules?.maxLength;
+
     if (_bridge.useNumericKeyboard) {
       return RepaintBoundary(
         child: NumericKeyboard(
           key: ValueKey<String>(
-            'auto_nk_${_bridge.showDecimalKey}_${_bridge.integersOnly}',
+            'auto_nk_${_bridge.showDecimalKey}_${_bridge.integersOnly}_$maxLength',
           ),
           controller: _bridge.controller,
           focusNode: _bridge.focusNode,
           commitOnEnterOnly: widget.commitOnEnterOnly,
-          allowDecimalInput: _bridge.showDecimalKey,
-          integersOnly: _bridge.integersOnly,
+          minValue: rules?.minValue,
+          maxValue: rules?.maxValue,
+          allowDecimalInput: rules?.allowDecimalInput ?? _bridge.showDecimalKey,
+          integersOnly: rules?.integersOnly ?? _bridge.integersOnly,
+          maxFractionDigits: rules?.maxFractionDigits,
+          maxLength: maxLength,
+          validator: rules?.validator,
           onDismiss: _handleDismiss,
           onEnterPressed: _handleEnter,
         ),
@@ -251,10 +272,13 @@ class _OnscreenKeyboardAttachmentState
 
     return RepaintBoundary(
       child: CustomKeyboard(
-        key: const ValueKey<String>('auto_alpha'),
+        key: ValueKey<String>('auto_alpha_$maxLength'),
         controller: _bridge.controller,
         focusNode: _bridge.focusNode,
         commitOnEnterOnly: widget.commitOnEnterOnly,
+        minLength: rules?.minLength,
+        maxLength: maxLength,
+        validator: rules?.validator,
         onDismiss: _handleDismiss,
         onEnterPressed: _handleEnter,
       ),

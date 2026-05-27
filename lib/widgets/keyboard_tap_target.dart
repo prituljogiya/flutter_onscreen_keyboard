@@ -56,10 +56,16 @@ class _KeyboardTapTargetState extends State<KeyboardTapTarget> {
     _holdRepeat = null;
   }
 
+  void _notifyPressed(bool pressed) {
+    if (!mounted) return;
+    widget.onPointerStateChanged?.call(pressed);
+  }
+
   void _onPointerDown(PointerDownEvent event) {
+    if (!mounted) return;
     _pointerDown = true;
     _longPressFired = false;
-    widget.onPointerStateChanged?.call(true);
+    _notifyPressed(true);
 
     if (!widget.fireOnRelease) {
       widget.onPressed();
@@ -67,9 +73,10 @@ class _KeyboardTapTargetState extends State<KeyboardTapTarget> {
 
     if (widget.enableHoldRepeat) {
       _holdDelay = Timer(KeyboardKeyTiming.repeatInitialDelay, () {
-        if (!_pointerDown) return;
+        if (!mounted || !_pointerDown) return;
         _holdRepeat = Timer.periodic(KeyboardKeyTiming.repeatInterval, (_) {
-          if (_pointerDown) widget.onPressed();
+          if (!mounted || !_pointerDown) return;
+          widget.onPressed();
         });
       });
     }
@@ -77,7 +84,7 @@ class _KeyboardTapTargetState extends State<KeyboardTapTarget> {
     final onLongPress = widget.onLongPress;
     if (onLongPress != null) {
       _longPressTimer = Timer(KeyboardKeyTiming.longPressDelay, () {
-        if (!_pointerDown) return;
+        if (!mounted || !_pointerDown) return;
         _longPressFired = true;
         _stopHoldRepeat();
         onLongPress();
@@ -86,8 +93,9 @@ class _KeyboardTapTargetState extends State<KeyboardTapTarget> {
   }
 
   void _onPointerUp(PointerUpEvent event) {
+    if (!mounted) return;
     _pointerDown = false;
-    widget.onPointerStateChanged?.call(false);
+    _notifyPressed(false);
     _stopHoldRepeat();
     _longPressTimer?.cancel();
     _longPressTimer = null;
@@ -98,8 +106,9 @@ class _KeyboardTapTargetState extends State<KeyboardTapTarget> {
   }
 
   void _onPointerCancel(PointerCancelEvent event) {
+    if (!mounted) return;
     _pointerDown = false;
-    widget.onPointerStateChanged?.call(false);
+    _notifyPressed(false);
     _stopHoldRepeat();
     _longPressTimer?.cancel();
     _longPressTimer = null;

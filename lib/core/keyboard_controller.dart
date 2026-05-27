@@ -122,6 +122,7 @@ class KeyboardController extends ChangeNotifier {
     notifyListeners();
     _flashTimer?.cancel();
     _flashTimer = Timer(KeyboardKeyTiming.flashHighlight, () {
+      if (!_active) return;
       _flashKeyId = null;
       notifyListeners();
     });

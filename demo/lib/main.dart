@@ -95,6 +95,16 @@ class _DemoRootState extends State<DemoRoot> {
           themeMode: _tc.themeMode,
           theme: DemoAppTheme.materialTheme(Brightness.light, preset),
           darkTheme: DemoAppTheme.materialTheme(Brightness.dark, preset),
+          builder: (context, child) {
+            return OnscreenKeyboardAttachment(
+              commitOnEnterOnly: true,
+              useDraggableInLandscape: true,
+              lockContentWhileKeyboardVisible: true,
+              dismissOnTapOutside: false,
+              dismissOnSystemBack: false,
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           home: PersonalDetailsPage(
             isDark: _tc.isDarkMode,
             presetIndex: _presetIndex,
@@ -126,6 +136,8 @@ class PersonalDetailsPage extends StatefulWidget {
 }
 
 class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
+  final _formKey = GlobalKey<FormState>();
+
   static const int _nameMinLength = 3;
   static const int _nameMaxLength = 24;
   static const int _ageMin = 1;
@@ -140,12 +152,6 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
   final _weightController = TextEditingController();
   final _ageController = TextEditingController();
 
-  final _nameFocus = FocusNode();
-  final _emailFocus = FocusNode();
-  final _phoneFocus = FocusNode();
-  final _weightFocus = FocusNode();
-  final _ageFocus = FocusNode();
-
   @override
   void dispose() {
     for (final c in [
@@ -157,50 +163,38 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
     ]) {
       c.dispose();
     }
-    for (final f in [
-      _nameFocus,
-      _emailFocus,
-      _phoneFocus,
-      _weightFocus,
-      _ageFocus,
-    ]) {
-      f.dispose();
-    }
     super.dispose();
   }
 
-  String? _emailValidator(String value) {
-    if (value.trim().isEmpty) return 'Please enter email';
-    return OnscreenKeyboardValidators.email(value);
+  String? _emailValidator(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return 'Please enter email';
+    return OnscreenKeyboardValidators.email(v);
   }
 
-  String? _phoneValidator(String value) {
-    if (value.length != _phoneLength) {
+  String? _phoneValidator(String? value) {
+    final v = value ?? '';
+    if (v.length != _phoneLength) {
       return 'Use exactly $_phoneLength digits';
     }
     return null;
   }
 
   void _submit() {
-    final missing = <String>[
-      if (_nameController.text.trim().isEmpty) 'Name',
-      if (_emailController.text.trim().isEmpty) 'Email',
-      if (_phoneController.text.trim().isEmpty) 'Phone',
-      if (_weightController.text.trim().isEmpty) 'Weight',
-      if (_ageController.text.trim().isEmpty) 'Age',
-    ];
-    if (missing.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please fill: ${missing.join(', ')}'),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Form Submitted')),
     );
+  }
+
+  String? _nameFormValidator(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.length < _nameMinLength) {
+      return 'At least $_nameMinLength characters';
+    }
+    return null;
   }
 
   Widget _themePresetPicker(BuildContext context) {
@@ -279,11 +273,13 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
     final isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
 
-    final form = SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    final form = Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           Card(
             elevation: 0,
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -301,9 +297,9 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Pick one of four keyboard styles. Each has light and dark '
-                    'palettes defined in DemoAppTheme. Toggle brightness with '
-                    'the icon in the app bar.',
+                    'Uses OnscreenTextFormField (TextFormField + all keyboard '
+                    'rules). Wire your app with OnscreenKeyboardBinding and '
+                    'OnscreenKeyboardAttachment in MaterialApp.builder.',
                   ),
                   const SizedBox(height: 12),
                   _themePresetPicker(context),
@@ -319,10 +315,8 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          OnscreenTextField(
-            fieldKey: const ValueKey<String>('field_name'),
+          OnscreenTextFormField(
             controller: _nameController,
-            focusNode: _nameFocus,
             keyboardType: TextInputType.text,
             minLength: _nameMinLength,
             maxLength: _nameMaxLength,
@@ -330,38 +324,35 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
               labelText: 'Name',
               hintText: '$_nameMinLength–$_nameMaxLength characters',
               border: OutlineInputBorder(),
+              counterText: '',
             ),
+            validator: _nameFormValidator,
           ),
           const SizedBox(height: 15),
-          OnscreenTextField(
-            fieldKey: const ValueKey<String>('field_email'),
+          OnscreenTextFormField(
             controller: _emailController,
-            focusNode: _emailFocus,
             keyboardType: TextInputType.emailAddress,
-            validator: _emailValidator,
             decoration: const InputDecoration(
               labelText: 'Email',
               border: OutlineInputBorder(),
             ),
+            validator: _emailValidator,
           ),
           const SizedBox(height: 15),
-          OnscreenTextField(
-            fieldKey: const ValueKey<String>('field_phone'),
+          OnscreenTextFormField(
             controller: _phoneController,
-            focusNode: _phoneFocus,
             keyboardType: TextInputType.phone,
             maxLength: _phoneLength,
-            validator: _phoneValidator,
             decoration: const InputDecoration(
               labelText: 'Phone Number',
               border: OutlineInputBorder(),
+              counterText: '',
             ),
+            validator: _phoneValidator,
           ),
           const SizedBox(height: 15),
-          OnscreenTextField(
-            fieldKey: const ValueKey<String>('field_weight'),
+          OnscreenTextFormField(
             controller: _weightController,
-            focusNode: _weightFocus,
             keyboardType:
                 const TextInputType.numberWithOptions(decimal: true),
             minValue: _weightMin,
@@ -374,10 +365,8 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
             ),
           ),
           const SizedBox(height: 15),
-          OnscreenTextField(
-            fieldKey: const ValueKey<String>('field_age'),
+          OnscreenTextFormField(
             controller: _ageController,
-            focusNode: _ageFocus,
             keyboardType: TextInputType.number,
             minValue: _ageMin,
             maxValue: _ageMax,
@@ -393,7 +382,8 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
             onPressed: _submit,
             child: const Text('Submit'),
           ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -408,14 +398,7 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: OnscreenKeyboardHost(
-          commitOnEnterOnly: true,
-          useDraggableInLandscape: true,
-          dismissOnTapOutside: false,
-          child: form,
-        ),
-      ),
+      body: SafeArea(child: form),
     );
   }
 }

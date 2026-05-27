@@ -44,13 +44,16 @@ class _NumericKeyState extends State<NumericKey>
 
   @override
   void dispose() {
+    _controller.stop();
     _controller.dispose();
     super.dispose();
   }
 
   void _setPressed(bool pressed) {
+    if (!mounted) return;
     if (_isPressed == pressed) return;
     setState(() => _isPressed = pressed);
+    if (!mounted) return;
     if (pressed) {
       _controller.forward();
     } else {
