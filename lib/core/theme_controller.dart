@@ -69,6 +69,26 @@ class ThemeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sets light/dark mode without changing the current [KeyboardTheme].
+  void setDarkMode(bool isDark) {
+    if (_isDarkMode == isDark) return;
+    _isDarkMode = isDark;
+    notifyListeners();
+  }
+
+  /// Applies a keyboard palette from [OnscreenKeyboardColors] and optional
+  /// brightness in one call (used by host apps that own light/dark palettes).
+  void applyKeyboardColors(
+    OnscreenKeyboardColors colors, {
+    bool? isDarkMode,
+  }) {
+    if (isDarkMode != null) {
+      _isDarkMode = isDarkMode;
+    }
+    _keyboardTheme = KeyboardTheme.fromColors(colors);
+    notifyListeners();
+  }
+
   void setPrimaryColor(Color color) {
     if (_primaryColor == color) return;
     _primaryColor = color;

@@ -113,9 +113,25 @@ class _OnscreenTextFieldState extends State<OnscreenTextField> {
 
     final scope =
         context.dependOnInheritedWidgetOfExactType<OnscreenKeyboardScope>();
-    final blocked = scope != null &&
-        scope.hasOpenKeyboard &&
-        !scope.isOpenFor(widget.focusNode);
+    if (scope == null) {
+      // Compatibility mode: when used without [OnscreenKeyboardHost] (for
+      // example with root-level [OnscreenKeyboardAttachment]), behave like a
+      // regular TextField so the global TextInput bridge can drive the custom
+      // keyboard for this field.
+      return TextField(
+        key: widget.fieldKey,
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        keyboardType: widget.keyboardType,
+        decoration: widget.decoration,
+        maxLines: widget.maxLines,
+        maxLength: widget.maxLength,
+        onChanged: widget.onChanged,
+        onSubmitted: widget.onSubmitted,
+      );
+    }
+
+    final blocked = scope.hasOpenKeyboard && !scope.isOpenFor(widget.focusNode);
 
     // The field is rendered as a regular [TextField] but we intentionally
     // prevent it from receiving pointer events directly. Flutter's

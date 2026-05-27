@@ -20,6 +20,7 @@ class OnscreenKeyboardHost extends StatefulWidget {
     this.useDraggableInLandscape = true,
     this.draggableWidthFactor = 0.5,
     this.draggableHeightFactor = 0.5,
+    this.dismissOnTapOutside = false,
   });
 
   final Widget child;
@@ -29,6 +30,10 @@ class OnscreenKeyboardHost extends StatefulWidget {
   final bool useDraggableInLandscape;
   final double draggableWidthFactor;
   final double draggableHeightFactor;
+
+  /// When true, tapping outside the keyboard dismisses it. Defaults to false
+  /// so dismissal happens only via the close button.
+  final bool dismissOnTapOutside;
   /// Opens the on-screen keyboard for [session] (used by [OnscreenTextField]).
   static void activate(BuildContext context, OnscreenFieldSession session) {
     final scope =
@@ -300,21 +305,25 @@ class _OnscreenKeyboardHostState extends State<OnscreenKeyboardHost> {
   }
 
   Widget _buildPortraitShell(OnscreenFieldSession? session) {
+    final body = Column(
+      children: [
+        Expanded(child: _wrapLockedContent(_anchoredChild)),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: session != null
+              ? _buildActiveKeyboard(session)
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+    if (!widget.dismissOnTapOutside) {
+      return body;
+    }
     return TapRegion(
       onTapOutside: (_) => _dismiss(),
-      child: Column(
-        children: [
-          Expanded(child: _wrapLockedContent(_anchoredChild)),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: session != null
-                ? _buildActiveKeyboard(session)
-                : const SizedBox.shrink(),
-          ),
-        ],
-      ),
+      child: body,
     );
   }
 

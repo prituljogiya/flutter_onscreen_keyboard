@@ -12,8 +12,9 @@ KeyboardTheme resolveKeyboardTheme([
   BuildContext? context,
 ]) {
   if (widgetOverride != null) return widgetOverride;
-  final configured = globalOnscreenKeyboardConfig.keyboardTheme;
-  if (configured != null) return configured;
+  final cfg = globalOnscreenKeyboardConfig;
+  final configured = cfg.keyboardTheme;
+  if (configured != null && cfg.lockKeyboardTheme) return configured;
   final scoped =
       context == null ? null : OnscreenKeyboardThemeScope.maybeOf(context);
   if (scoped != null) return scoped.keyboardTheme;
@@ -27,7 +28,9 @@ Widget buildKeyboardWithResolvedTheme({
   required Widget Function(KeyboardTheme theme) builder,
   BuildContext? context,
 }) {
-  final fixed = widgetOverride ?? globalOnscreenKeyboardConfig.keyboardTheme;
+  final cfg = globalOnscreenKeyboardConfig;
+  final fixed = widgetOverride ??
+      (cfg.lockKeyboardTheme ? cfg.keyboardTheme : null);
   if (fixed != null) {
     return builder(fixed);
   }

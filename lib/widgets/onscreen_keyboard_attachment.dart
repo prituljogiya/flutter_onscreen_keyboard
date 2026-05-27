@@ -42,6 +42,8 @@ class OnscreenKeyboardAttachment extends StatefulWidget {
     this.commitOnEnterOnly = false,
     this.onEnterPressed,
     this.onTapOutside,
+    this.lockContentWhileKeyboardVisible = true,
+    this.dismissOnTapOutside = false,
   });
 
   final Widget child;
@@ -70,9 +72,16 @@ class OnscreenKeyboardAttachment extends StatefulWidget {
   /// `performAction` runs.
   final VoidCallback? onEnterPressed;
 
-  /// Called when the user dismisses the keyboard by tapping the close (X)
-  /// button or tapping outside the draggable panel.
+  /// Called when the user dismisses the keyboard via the close (X) button.
   final VoidCallback? onTapOutside;
+
+  /// When true (default), blocks pointer interaction with page content while
+  /// the keyboard is visible so another field cannot steal focus.
+  final bool lockContentWhileKeyboardVisible;
+
+  /// When true, tapping outside the keyboard panel dismisses it. Defaults to
+  /// false so dismissal happens only via the close button (kiosk-style).
+  final bool dismissOnTapOutside;
 
   @override
   State<OnscreenKeyboardAttachment> createState() =>
@@ -153,6 +162,13 @@ class _OnscreenKeyboardAttachmentState
   /// the active field's [TextInputType] is numeric the bridge flips
   /// [OnscreenKeyboardInputBridge.useNumericKeyboard] to `true` and the
   /// draggable card renders the numeric pad instead of QWERTY.
+  Widget _wrapContent(Widget child) {
+    if (!widget.lockContentWhileKeyboardVisible || !_bridge.isVisible) {
+      return child;
+    }
+    return AbsorbPointer(absorbing: true, child: child);
+  }
+
   Widget _buildDraggableShell() {
     if (!_bridge.isVisible) {
       return widget.child;
@@ -179,15 +195,16 @@ class _OnscreenKeyboardAttachmentState
       pushContent: false,
       onDismiss: _handleDismiss,
       onEnterPressed: _handleEnter,
-      child: widget.child,
+      child: _wrapContent(widget.child),
     );
   }
 
   /// Portrait: dock the keyboard to the bottom and push the form content up.
   Widget _buildDockedShell() {
-    return Column(
+    final content = _wrapContent(widget.child);
+    final body = Column(
       children: [
-        Expanded(child: widget.child),
+        Expanded(child: content),
         AnimatedSize(
           duration: widget.transitionDuration,
           curve: Curves.easeOutCubic,
@@ -197,6 +214,13 @@ class _OnscreenKeyboardAttachmentState
               : const SizedBox(height: 0, width: double.infinity),
         ),
       ],
+    );
+    if (!widget.dismissOnTapOutside) {
+      return body;
+    }
+    return TapRegion(
+      onTapOutside: (_) => _handleDismiss(),
+      child: body,
     );
   }
 
