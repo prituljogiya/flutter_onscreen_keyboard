@@ -67,9 +67,9 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     }
   }
 
-  TextStyle _previewTextStyle(bool isLandscape) {
+  TextStyle _previewTextStyle(KeyboardTheme theme, bool isLandscape) {
     return TextStyle(
-      color: Colors.white,
+      color: theme.previewTextColor,
       fontSize: isLandscape ? 16 : 18,
     );
   }
@@ -78,10 +78,11 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     if (_teardown || !mounted) return;
     final isLandscape = MediaQuery.maybeOrientationOf(context) ==
         Orientation.landscape;
+    final theme = resolveKeyboardTheme(widget.keyboardTheme, context);
     schedulePreviewStripScroll(
       scrollController: _previewScrollController,
       textController: _inputController,
-      textStyle: _previewTextStyle(isLandscape),
+      textStyle: _previewTextStyle(theme, isLandscape),
       canScroll: () => mounted && !_teardown,
     );
   }
@@ -220,6 +221,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     final isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     final caretColor = theme.specialKeyTextColor;
+    final selectionTint =
+        theme.previewTextColor.withValues(alpha: 0.25);
     final hasBounds =
         widget.minLength != null || widget.maxLength != null;
 
@@ -256,8 +259,10 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
           child: Column(
             children: [
               _buildPreviewStrip(
+                theme: theme,
                 isLandscape: isLandscape,
                 caretColor: caretColor,
+                selectionTint: selectionTint,
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(10, 2, 10, 2),
@@ -322,8 +327,10 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   }
 
   Widget _buildPreviewStrip({
+    required KeyboardTheme theme,
     required bool isLandscape,
     required Color caretColor,
+    required Color selectionTint,
   }) {
     final previewHeight = isLandscape ? 38.0 : 48.0;
     final previewMargin = isLandscape ? 6.0 : 8.0;
@@ -339,10 +346,10 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
             ),
             alignment: Alignment.centerLeft,
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.15),
-              border: const Border(
+              color: theme.previewBackgroundColor,
+              border: Border(
                 bottom: BorderSide(
-                  color: Colors.white24,
+                  color: theme.previewBorderColor,
                   width: 1.2,
                 ),
               ),
@@ -351,7 +358,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
               data: Theme.of(context).copyWith(
                 textSelectionTheme: TextSelectionThemeData(
                   cursorColor: caretColor,
-                  selectionColor: Colors.white24,
+                  selectionColor: selectionTint,
                   selectionHandleColor: caretColor,
                 ),
               ),
@@ -370,10 +377,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                 showCursor: true,
                 readOnly: true,
                 enableInteractiveSelection: false,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isLandscape ? 16 : 18,
-                ),
+                style: _previewTextStyle(theme, isLandscape),
                 decoration: const InputDecoration(
                   border: InputBorder.none,
                   isCollapsed: true,
@@ -392,13 +396,13 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
             child: InkWell(
               onTap: _closePanel,
               customBorder: const CircleBorder(),
-              child: const SizedBox(
+              child: SizedBox(
                 width: 44,
                 height: 44,
                 child: Icon(
                   Icons.close,
                   size: 20,
-                  color: Colors.white,
+                  color: theme.chromeIconColor,
                 ),
               ),
             ),

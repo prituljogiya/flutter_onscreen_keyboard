@@ -43,6 +43,10 @@ class OnscreenKeyboardColors {
     this.fontSize = 16,
     this.keySpacing = 6,
     this.keyElevation = 4,
+    this.previewBackground,
+    this.previewText,
+    this.previewBorder,
+    this.chromeIcon,
   });
 
   /// Keyboard panel background.
@@ -86,6 +90,18 @@ class OnscreenKeyboardColors {
   final double fontSize;
   final double keySpacing;
   final double keyElevation;
+
+  /// Preview strip behind typed text. Defaults to [keyBackground].
+  final Color? previewBackground;
+
+  /// Typed text in the preview strip. Defaults to [keyText].
+  final Color? previewText;
+
+  /// Bottom border on the preview strip. Defaults to [keyBorder].
+  final Color? previewBorder;
+
+  /// Close (X) icon on the keyboard chrome. Defaults to [keyText].
+  final Color? chromeIcon;
 
   /// Builds the [KeyboardTheme] used by all keyboard widgets.
   KeyboardTheme toTheme() => KeyboardTheme.fromColors(this);

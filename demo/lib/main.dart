@@ -6,7 +6,7 @@ import 'app_keyboard_theme.dart';
 void main() {
   FlutterOnscreenKeyboard.configure(
     OnscreenKeyboardConfig.withColors(
-      colors: DemoAppTheme.keyboardDark,
+      colors: DemoAppTheme.aurora.darkKeyboard,
       useCustomKeyboard: true,
       replaceDefaultTheme: true,
     ),
@@ -26,37 +26,58 @@ class DemoRoot extends StatefulWidget {
 
 class _DemoRootState extends State<DemoRoot> {
   final ThemeController _tc = FlutterOnscreenKeyboard.themeController;
+  int _presetIndex = 0;
   bool _syncingKeyboardPalette = false;
+
+  DemoThemePreset get _preset => DemoAppTheme.presetAt(_presetIndex);
 
   @override
   void initState() {
     super.initState();
-    _tc.addListener(_syncKeyboardThemeWithMode);
-    _syncKeyboardThemeWithMode();
+    _tc.addListener(_onThemeControllerChanged);
+    _applyPreset(applyBrightness: false);
   }
 
   @override
   void dispose() {
-    _tc.removeListener(_syncKeyboardThemeWithMode);
+    _tc.removeListener(_onThemeControllerChanged);
     super.dispose();
   }
 
-  void _syncKeyboardThemeWithMode() {
+  void _onThemeControllerChanged() {
     if (_syncingKeyboardPalette) return;
-    final target = _tc.isDarkMode
-        ? DemoAppTheme.keyboardDark
-        : DemoAppTheme.keyboardLight;
+    _applyPreset(applyBrightness: false);
+  }
 
-    // Skip if already using this palette to avoid notification loops.
-    if (_tc.keyboardTheme.backgroundColor == target.background &&
-        _tc.keyboardTheme.keyBackgroundColor == target.keyBackground &&
-        _tc.keyboardTheme.keyTextColor == target.keyText) {
+  void _setPresetIndex(int index) {
+    if (index == _presetIndex) return;
+    setState(() => _presetIndex = index);
+    _applyPreset();
+  }
+
+  void _toggleBrightness() {
+    _tc.setDarkMode(!_tc.isDarkMode);
+    _applyPreset();
+  }
+
+  void _applyPreset({bool applyBrightness = true}) {
+    final preset = _preset;
+    final keyboard = preset.keyboardFor(
+      _tc.isDarkMode ? Brightness.dark : Brightness.light,
+    );
+
+    if (_tc.keyboardTheme.backgroundColor == keyboard.background &&
+        _tc.keyboardTheme.keyBackgroundColor == keyboard.keyBackground &&
+        _tc.keyboardTheme.keyTextColor == keyboard.keyText) {
       return;
     }
 
     _syncingKeyboardPalette = true;
     try {
-      _tc.applyKeyboardColors(target, isDarkMode: _tc.isDarkMode);
+      _tc.applyKeyboardColors(
+        keyboard,
+        isDarkMode: applyBrightness ? _tc.isDarkMode : null,
+      );
     } finally {
       _syncingKeyboardPalette = false;
     }
@@ -64,6 +85,7 @@ class _DemoRootState extends State<DemoRoot> {
 
   @override
   Widget build(BuildContext context) {
+    final preset = _preset;
     return ListenableBuilder(
       listenable: _tc,
       builder: (context, _) {
@@ -71,9 +93,14 @@ class _DemoRootState extends State<DemoRoot> {
           debugShowCheckedModeBanner: false,
           title: 'Personal Details Form',
           themeMode: _tc.themeMode,
-          theme: DemoAppTheme.materialTheme(Brightness.light),
-          darkTheme: DemoAppTheme.materialTheme(Brightness.dark),
-          home: PersonalDetailsPage(isDark: _tc.isDarkMode),
+          theme: DemoAppTheme.materialTheme(Brightness.light, preset),
+          darkTheme: DemoAppTheme.materialTheme(Brightness.dark, preset),
+          home: PersonalDetailsPage(
+            isDark: _tc.isDarkMode,
+            presetIndex: _presetIndex,
+            onPresetSelected: _setPresetIndex,
+            onToggleBrightness: _toggleBrightness,
+          ),
         );
       },
     );
@@ -81,9 +108,18 @@ class _DemoRootState extends State<DemoRoot> {
 }
 
 class PersonalDetailsPage extends StatefulWidget {
-  const PersonalDetailsPage({super.key, required this.isDark});
+  const PersonalDetailsPage({
+    super.key,
+    required this.isDark,
+    required this.presetIndex,
+    required this.onPresetSelected,
+    required this.onToggleBrightness,
+  });
 
   final bool isDark;
+  final int presetIndex;
+  final ValueChanged<int> onPresetSelected;
+  final VoidCallback onToggleBrightness;
 
   @override
   State<PersonalDetailsPage> createState() => _PersonalDetailsPageState();
@@ -145,15 +181,6 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
     return null;
   }
 
-  void _toggleTheme() {
-    final tc = FlutterOnscreenKeyboard.themeController;
-    final goingDark = !tc.isDarkMode;
-    tc.applyKeyboardColors(
-      goingDark ? DemoAppTheme.keyboardDark : DemoAppTheme.keyboardLight,
-      isDarkMode: goingDark,
-    );
-  }
-
   void _submit() {
     final missing = <String>[
       if (_nameController.text.trim().isEmpty) 'Name',
@@ -173,6 +200,77 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Form Submitted')),
+    );
+  }
+
+  Widget _themePresetPicker(BuildContext context) {
+    final preset = DemoAppTheme.presetAt(widget.presetIndex);
+    final keyboard = preset.keyboardFor(
+      widget.isDark ? Brightness.dark : Brightness.light,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Keyboard theme',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${preset.name} · ${widget.isDark ? 'Dark' : 'Light'}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: List.generate(DemoAppTheme.presets.length, (index) {
+            final p = DemoAppTheme.presets[index];
+            final kb = p.keyboardFor(
+              widget.isDark ? Brightness.dark : Brightness.light,
+            );
+            final selected = index == widget.presetIndex;
+            return FilterChip(
+              label: Text(p.name),
+              selected: selected,
+              avatar: CircleAvatar(
+                radius: 10,
+                backgroundColor: kb.background,
+                child: CircleAvatar(
+                  radius: 6,
+                  backgroundColor: kb.activeKey,
+                ),
+              ),
+              onSelected: (_) => widget.onPresetSelected(index),
+            );
+          }),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          height: 44,
+          decoration: BoxDecoration(
+            color: keyboard.previewBackground,
+            border: Border.all(
+              color: keyboard.previewBorder ??
+                  keyboard.keyBorder ??
+                  preset.seedColor,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            'Preview text Aa123',
+            style: TextStyle(
+              color: keyboard.previewText,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -203,10 +301,12 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Same integration as the example app: OnscreenKeyboardHost '
-                    '+ OnscreenTextField. Type in the keyboard preview; press '
-                    'Enter to commit. Close with X only.',
+                    'Pick one of four keyboard styles. Each has light and dark '
+                    'palettes defined in DemoAppTheme. Toggle brightness with '
+                    'the icon in the app bar.',
                   ),
+                  const SizedBox(height: 12),
+                  _themePresetPicker(context),
                   const SizedBox(height: 8),
                   Text(
                     isLandscape
@@ -304,7 +404,7 @@ class _PersonalDetailsPageState extends State<PersonalDetailsPage> {
           IconButton(
             tooltip: widget.isDark ? 'Switch to light' : 'Switch to dark',
             icon: Icon(widget.isDark ? Icons.light_mode : Icons.dark_mode),
-            onPressed: _toggleTheme,
+            onPressed: widget.onToggleBrightness,
           ),
         ],
       ),

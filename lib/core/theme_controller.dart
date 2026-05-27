@@ -142,6 +142,10 @@ class KeyboardTheme {
   final double keyElevation;
   final Color shadowColor;
   final Gradient primaryGradient;
+  final Color previewBackgroundColor;
+  final Color previewTextColor;
+  final Color previewBorderColor;
+  final Color chromeIconColor;
 
   /// Builds a full [KeyboardTheme] from [OnscreenKeyboardColors] (all colors in one place).
   factory KeyboardTheme.fromColors(OnscreenKeyboardColors colors) {
@@ -149,6 +153,11 @@ class KeyboardTheme {
     final shadow = colors.shadow ?? Colors.black.withValues(alpha: 0.4);
     final gradientTop = colors.gradientTop ?? colors.keyBackground;
     final gradientBottom = colors.gradientBottom ?? colors.keyBackground;
+    final previewText = colors.previewText ?? colors.keyText;
+    final previewBackground =
+        colors.previewBackground ?? colors.keyBackground;
+    final previewBorder = colors.previewBorder ?? border;
+    final chromeIcon = colors.chromeIcon ?? previewText;
 
     return KeyboardTheme(
       backgroundColor: colors.background,
@@ -171,6 +180,10 @@ class KeyboardTheme {
         end: Alignment.bottomCenter,
         colors: [gradientTop, gradientBottom],
       ),
+      previewBackgroundColor: previewBackground,
+      previewTextColor: previewText,
+      previewBorderColor: previewBorder,
+      chromeIconColor: chromeIcon,
     );
   }
 
@@ -191,20 +204,27 @@ class KeyboardTheme {
     required this.keyElevation,
     required this.shadowColor,
     required this.primaryGradient,
+    required this.previewBackgroundColor,
+    required this.previewTextColor,
+    required this.previewBorderColor,
+    required this.chromeIconColor,
   });
 
   // PURPLE CYAN THEME
   factory KeyboardTheme.purpleCyan() {
+    const keyBg = Color(0xFF3D0F5C);
+    const keyText = Color(0xFFE0D0FF);
+    const border = Color(0xFF5A3A7A);
     return KeyboardTheme(
       backgroundColor: const Color(0xFF2D004D),
-      keyBackgroundColor: const Color(0xFF3D0F5C),
-      keyTextColor: const Color(0xFFE0D0FF),
+      keyBackgroundColor: keyBg,
+      keyTextColor: keyText,
       specialKeyColor: const Color(0xFF4A1A6B),
       specialKeyTextColor: const Color(0xFF00E5D4),
       activeKeyColor: const Color(0xFF31AC6F),
       keyPressedColor: const Color(0xFF31AC6F),
       activeKeyTextColor: Colors.white,
-      keyBorderColor: const Color(0xFF5A3A7A).withValues(alpha: 0.5),
+      keyBorderColor: border.withValues(alpha: 0.5),
       keyBorderWidth: 1,
       borderRadius: 8,
       fontSize: 16,
@@ -219,6 +239,10 @@ class KeyboardTheme {
           Color(0xFF2D0A4A),
         ],
       ),
+      previewBackgroundColor: keyBg,
+      previewTextColor: keyText,
+      previewBorderColor: border.withValues(alpha: 0.5),
+      chromeIconColor: keyText,
     );
   }
 
@@ -229,16 +253,19 @@ class KeyboardTheme {
 
   // LIGHT THEME
   factory KeyboardTheme.lightTheme() {
+    const keyBg = Color(0xFFF3E5F5);
+    const keyText = Colors.black87;
+    final border = Colors.grey.withValues(alpha: 0.3);
     return KeyboardTheme(
       backgroundColor: Colors.white,
-      keyBackgroundColor: const Color(0xFFF3E5F5),
-      keyTextColor: Colors.black87,
+      keyBackgroundColor: keyBg,
+      keyTextColor: keyText,
       specialKeyColor: const Color(0xFF9C27B0),
       specialKeyTextColor: Colors.white,
       activeKeyColor: const Color(0xFF31AC6F),
       keyPressedColor: const Color(0xFF31AC6F),
       activeKeyTextColor: Colors.white,
-      keyBorderColor: Colors.grey.withValues(alpha: 0.3),
+      keyBorderColor: border,
       keyBorderWidth: 1,
       borderRadius: 8,
       fontSize: 16,
@@ -253,6 +280,10 @@ class KeyboardTheme {
           Color(0xFFF3E5F5),
         ],
       ),
+      previewBackgroundColor: keyBg,
+      previewTextColor: keyText,
+      previewBorderColor: border,
+      chromeIconColor: keyText,
     );
   }
 
@@ -273,6 +304,10 @@ class KeyboardTheme {
     double? keyElevation,
     Color? shadowColor,
     Gradient? primaryGradient,
+    Color? previewBackgroundColor,
+    Color? previewTextColor,
+    Color? previewBorderColor,
+    Color? chromeIconColor,
   }) {
     return KeyboardTheme(
       backgroundColor: backgroundColor ?? this.backgroundColor,
@@ -291,6 +326,11 @@ class KeyboardTheme {
       keyElevation: keyElevation ?? this.keyElevation,
       shadowColor: shadowColor ?? this.shadowColor,
       primaryGradient: primaryGradient ?? this.primaryGradient,
+      previewBackgroundColor:
+          previewBackgroundColor ?? this.previewBackgroundColor,
+      previewTextColor: previewTextColor ?? this.previewTextColor,
+      previewBorderColor: previewBorderColor ?? this.previewBorderColor,
+      chromeIconColor: chromeIconColor ?? this.chromeIconColor,
     );
   }
 }

@@ -84,17 +84,21 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     }
   }
 
-  static const TextStyle _previewTextStyle = TextStyle(
-    fontSize: 15,
-    fontWeight: FontWeight.w500,
-  );
+  TextStyle _previewTextStyle(KeyboardTheme theme) {
+    return TextStyle(
+      color: theme.previewTextColor,
+      fontSize: 15,
+      fontWeight: FontWeight.w500,
+    );
+  }
 
   void _syncPreviewScroll() {
     if (_teardown || !mounted) return;
+    final theme = resolveKeyboardTheme(widget.keyboardTheme, context);
     schedulePreviewStripScroll(
       scrollController: _previewScrollController,
       textController: _inputController,
-      textStyle: _previewTextStyle,
+      textStyle: _previewTextStyle(theme),
       canScroll: () => mounted && !_teardown,
     );
   }
@@ -452,7 +456,9 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   }
 
   Widget _buildPreviewStrip(KeyboardTheme theme) {
-    final caretColor = theme.keyTextColor;
+    final caretColor = theme.specialKeyTextColor;
+    final selectionTint =
+        theme.previewTextColor.withValues(alpha: 0.25);
 
     return Row(
       children: [
@@ -463,10 +469,10 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             alignment: Alignment.centerLeft,
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.2),
-              border: const Border(
+              color: theme.previewBackgroundColor,
+              border: Border(
                 bottom: BorderSide(
-                  color: Colors.white24,
+                  color: theme.previewBorderColor,
                   width: 1.2,
                 ),
               ),
@@ -475,7 +481,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
               data: Theme.of(context).copyWith(
                 textSelectionTheme: TextSelectionThemeData(
                   cursorColor: caretColor,
-                  selectionColor: Colors.white24,
+                  selectionColor: selectionTint,
                   selectionHandleColor: caretColor,
                 ),
               ),
@@ -494,11 +500,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                 showCursor: true,
                 readOnly: true,
                 enableInteractiveSelection: false,
-                style: TextStyle(
-                  color: theme.keyTextColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: _previewTextStyle(theme),
                 decoration: const InputDecoration(
                   border: InputBorder.none,
                   isCollapsed: true,
@@ -523,7 +525,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                 child: Icon(
                   Icons.close,
                   size: 18,
-                  color: theme.keyTextColor,
+                  color: theme.chromeIconColor,
                 ),
               ),
             ),

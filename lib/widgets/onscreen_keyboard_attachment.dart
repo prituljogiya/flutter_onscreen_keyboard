@@ -44,6 +44,7 @@ class OnscreenKeyboardAttachment extends StatefulWidget {
     this.onTapOutside,
     this.lockContentWhileKeyboardVisible = true,
     this.dismissOnTapOutside = false,
+    this.dismissOnSystemBack = false,
   });
 
   final Widget child;
@@ -82,6 +83,10 @@ class OnscreenKeyboardAttachment extends StatefulWidget {
   /// When true, tapping outside the keyboard panel dismisses it. Defaults to
   /// false so dismissal happens only via the close button (kiosk-style).
   final bool dismissOnTapOutside;
+
+  /// When true, the system back gesture/button dismisses the keyboard.
+  /// Defaults to false so only the close (X) button dismisses it.
+  final bool dismissOnSystemBack;
 
   @override
   State<OnscreenKeyboardAttachment> createState() =>
@@ -136,9 +141,11 @@ class _OnscreenKeyboardAttachmentState
         builder: (context, _) {
           return PopScope(
             canPop: !_bridge.isVisible,
-            onPopInvokedWithResult: (didPop, result) {
-              if (!didPop && _bridge.isVisible) _bridge.dismiss();
-            },
+            onPopInvokedWithResult: widget.dismissOnSystemBack
+                ? (didPop, result) {
+                    if (!didPop && _bridge.isVisible) _bridge.dismiss();
+                  }
+                : null,
             child: _buildShell(context),
           );
         },
