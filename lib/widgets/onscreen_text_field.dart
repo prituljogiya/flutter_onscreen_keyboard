@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/onscreen_keyboard_config.dart';
 import 'onscreen_field_session.dart';
+import 'onscreen_keyboard_field_rules.dart';
 import 'onscreen_keyboard_host.dart';
 
 /// Text field that uses the on-screen custom keyboard when
@@ -61,6 +62,19 @@ class OnscreenTextField extends StatefulWidget {
 }
 
 class _OnscreenTextFieldState extends State<OnscreenTextField> {
+  String? _keyboardValidator(String value) => widget.validator?.call(value);
+
+  OnscreenFieldRule get _rule => OnscreenFieldRule(
+        minLength: widget.minLength,
+        maxLength: widget.maxLength,
+        minValue: widget.minValue,
+        maxValue: widget.maxValue,
+        allowDecimalInput: widget.allowDecimalInput,
+        integersOnly: widget.integersOnly,
+        maxFractionDigits: widget.maxFractionDigits,
+        validator: _keyboardValidator,
+      );
+
   OnscreenFieldSession get _session => OnscreenFieldSession(
         controller: widget.controller,
         focusNode: widget.focusNode,
@@ -72,8 +86,37 @@ class _OnscreenTextFieldState extends State<OnscreenTextField> {
         allowDecimalInput: widget.allowDecimalInput,
         integersOnly: widget.integersOnly,
         maxFractionDigits: widget.maxFractionDigits,
-        validator: widget.validator,
+        validator: _keyboardValidator,
       );
+
+  @override
+  void initState() {
+    super.initState();
+    _registerRules();
+  }
+
+  @override
+  void didUpdateWidget(covariant OnscreenTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.minLength != widget.minLength ||
+        oldWidget.maxLength != widget.maxLength ||
+        oldWidget.minValue != widget.minValue ||
+        oldWidget.maxValue != widget.maxValue ||
+        oldWidget.validator != widget.validator) {
+      _registerRules();
+    }
+  }
+
+  @override
+  void dispose() {
+    OnscreenKeyboardFieldRules.unregister(widget.focusNode);
+    super.dispose();
+  }
+
+  void _registerRules() {
+    if (!useCustomOnscreenKeyboard) return;
+    OnscreenKeyboardFieldRules.register(widget.focusNode, _rule);
+  }
 
   @override
   void didChangeDependencies() {

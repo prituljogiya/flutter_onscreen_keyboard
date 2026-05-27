@@ -2,6 +2,8 @@
 
 This document is a single-page reference for the package's source layout: what every file is responsible for, how the pieces fit together, and what you import for each common task.
 
+For **app integration** (GetX, `TextFormField`, custom fields, kiosk flags), see **[`USAGE.md`](USAGE.md)**.
+
 - [Quick start](#quick-start)
 - [Top-level structure](#top-level-structure)
 - [Public entry point](#public-entry-point)

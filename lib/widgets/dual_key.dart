@@ -58,8 +58,9 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
-    _controller.dispose();
     _removeOverlay();
+    _controller.stop();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -75,8 +76,10 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
       widget.alternateChars != null && widget.alternateChars!.isNotEmpty;
 
   void _setPressed(bool pressed) {
+    if (!mounted) return;
     if (_isPressed == pressed) return;
     setState(() => _isPressed = pressed);
+    if (!mounted) return;
     if (pressed) {
       _controller.forward();
     } else {

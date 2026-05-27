@@ -21,8 +21,11 @@ export 'widgets/numeric.dart';
 export 'widgets/numeric_keyboard_key.dart';
 export 'widgets/onscreen_keyboard_attachment.dart';
 export 'widgets/onscreen_text_field.dart';
+export 'widgets/onscreen_text_form_field.dart';
+export 'widgets/onscreen_keyboard_form_field_scope.dart';
 export 'widgets/onscreen_keyboard_host.dart';
 export 'widgets/onscreen_field_session.dart';
+export 'widgets/onscreen_keyboard_field_rules.dart';
 
 
 

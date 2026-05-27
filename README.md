@@ -8,7 +8,8 @@ A drop-in **custom on-screen keyboard** for Flutter (alpha + numeric) that you c
 - Themeable via `KeyboardTheme` / `OnscreenKeyboardColors`.
 - Draggable in landscape, slides up in portrait, with smooth open/close animations.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full file-by-file reference, and [`docs/TEST_CASES.md`](docs/TEST_CASES.md) for the test catalog.
+See **[`docs/USAGE.md`](docs/USAGE.md)** for full integration (GetX, `TextFormField`, custom fields, kiosk flags).  
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the file-by-file reference, and [`docs/TEST_CASES.md`](docs/TEST_CASES.md) for the test catalog.
 
 ---
 
@@ -238,19 +239,31 @@ FlutterOnscreenKeyboard.configure(
 
 ---
 
-## 7. Public API (cheat sheet)
+## 7. More integration options
+
+| Use case | Doc section |
+|----------|-------------|
+| GetX + `ResponsiveBreakpoints` + replace `KeyboardDismissOnTap` | [`docs/USAGE.md` §4](docs/USAGE.md#4-getx--responsivebreakpoints) |
+| Your own `CustomTextFormField` | [`docs/USAGE.md` §5](docs/USAGE.md#5-custom-textformfield-your-own-widget) |
+| App-wide `TextFormField` (no per-screen host) | [`docs/USAGE.md` §3](docs/USAGE.md#3-integration-patterns) |
+| Kiosk flags (`commitOnEnterOnly`, dismiss, lock) | [`docs/USAGE.md` §9](docs/USAGE.md#9-attachment-flags-kiosk-vs-forms) |
+
+## 8. Public API (cheat sheet)
 
 ```dart
 import 'package:flutter_onscreen_keyboard/custom_keyboard.dart';
 
 // Initialisation
 FlutterOnscreenKeyboard.configure(OnscreenKeyboardConfig(...));
-OnscreenKeyboardBinding(child: ...)            // wrap MaterialApp (or app root)
-CustomKeyboardApp(child: ...)                  // optional self-contained MaterialApp shell
+OnscreenKeyboardBinding(child: ...)              // wrap app root
+OnscreenKeyboardAttachment(child: ...)         // MaterialApp.builder (app-wide)
+CustomKeyboardApp(child: ...)                  // optional self-contained shell
 
-// Layout
-OnscreenKeyboardHost(child: ...)               // wrap your form / screen
-OnscreenTextField(controller, focusNode, ...)  // input field
+// Fields
+OnscreenKeyboardHost(child: ...)                 // per-screen kiosk wrapper
+OnscreenTextField(controller, focusNode, ...)    // host + attachment
+OnscreenTextFormField(controller, ...)           // TextFormField + rules
+OnscreenKeyboardFormFieldScope(builder: ...)     // your CustomTextFormField
 
 // Validation helpers
 OnscreenKeyboardValidators.email
@@ -266,12 +279,14 @@ Anything else in `lib/` is implementation detail and may evolve — only import 
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
-| Tapping field opens the **system** keyboard | `useCustomKeyboard` is `false` in your config, or you forgot `OnscreenKeyboardBinding` |
-| Keyboard opens but the form jumps / blinks on tap | Make sure you used `OnscreenTextField`, not a plain `TextField` (the host relies on it to intercept tap focus) |
+| Tapping field opens the **system** keyboard | `useCustomKeyboard` is `false`, or missing `OnscreenKeyboardBinding` / `OnscreenKeyboardAttachment` in `builder` |
+| Keyboard dismisses on tap / never stays open | Remove app-wide `KeyboardDismissOnTap`; see [`docs/USAGE.md` §11](docs/USAGE.md#11-troubleshooting) |
+| Keyboard opens but the form jumps / blinks on tap | Use `OnscreenKeyboardHost` + `OnscreenTextField`, or `OnscreenKeyboardFormFieldScope` with `readOnly` on host screens |
+| `TextFormField` rules not applied | Use `OnscreenTextFormField` or `OnscreenKeyboardFormFieldScope` — see [`docs/USAGE.md` §5](docs/USAGE.md#5-custom-textformfield-your-own-widget) |
 | In landscape, keyboard overlaps the field instead of appearing in a draggable panel | That's expected — the panel is draggable. Pan it to where you want; the position is remembered for the session |
 | Numeric field accepts unlimited digits after `.` | This is the default. Set `maxFractionDigits: N` on the `OnscreenTextField` to cap it. `minValue` / `maxValue` only constrain the numeric value, not the fractional length. |
 | Numeric field lets me type values outside `min/max` | Inside the digit width of `max` it does (e.g. for `max: 500` you can type `555` so you see the "Must be ≤ 500" error). Beyond that width — `5555` for the same field — keystrokes are silently rejected. Enter stays blocked until the value is back in range. |
@@ -284,5 +299,6 @@ Anything else in `lib/` is implementation detail and may evolve — only import 
 - ✅ 51 unit/widget tests passing
 - ✅ No GetX dependency
 - ✅ Works on Android / iOS / desktop / web
+- 📁 **Usage / integration:** [`docs/USAGE.md`](docs/USAGE.md)
 - 📁 Architecture reference: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - 📁 Test catalog: [`docs/TEST_CASES.md`](docs/TEST_CASES.md)
