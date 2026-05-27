@@ -61,13 +61,17 @@ class _NumericKeyState extends State<NumericKey>
   @override
   Widget build(BuildContext context) {
     final t = widget.theme;
+    final gradient =
+        _isPressed ? t.pressedGradient : t.primaryGradient;
+    final specialGradient =
+        _isPressed ? t.pressedGradient : t.specialKeyGradient;
     final decoration = widget.isSpecial
         ? BoxDecoration(
-            color: _isPressed ? t.keyPressedColor : t.specialKeyColor,
+            gradient: specialGradient,
             borderRadius: BorderRadius.circular(t.borderRadius),
             border: Border.all(
-              color: t.keyBorderColor,
-              width: t.keyBorderWidth,
+              color: _isPressed ? t.keyPressedColor : t.keyBorderColor,
+              width: _isPressed ? 2.2 : t.keyBorderWidth,
             ),
             boxShadow: _isPressed
                 ? [
@@ -86,17 +90,11 @@ class _NumericKeyState extends State<NumericKey>
                   ],
           )
         : BoxDecoration(
-            gradient: _isPressed
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [t.keyPressedColor, t.keyPressedColor],
-                  )
-                : t.primaryGradient,
+            gradient: gradient,
             borderRadius: BorderRadius.circular(t.borderRadius),
             border: Border.all(
-              color: t.keyBorderColor,
-              width: t.keyBorderWidth,
+              color: _isPressed ? t.keyPressedColor : t.keyBorderColor,
+              width: _isPressed ? 2.2 : t.keyBorderWidth,
             ),
             boxShadow: _isPressed
                 ? [

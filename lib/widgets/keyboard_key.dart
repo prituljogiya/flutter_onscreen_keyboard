@@ -168,25 +168,18 @@ class _KeyboardKeyState extends State<KeyboardKey>
   Widget build(BuildContext context) {
     final isSpecial = widget.isSpecial || widget.isActive;
 
-    Color bgColor;
     Color textColor;
-    Gradient? gradient;
+    Gradient gradient;
 
-    if (_isPressed) {
-      bgColor = widget.theme.keyPressedColor;
+    if (_isPressed || widget.isActive) {
+      gradient = widget.theme.pressedGradient;
       textColor = widget.theme.activeKeyTextColor;
-      gradient = null;
-    } else if (widget.isActive) {
-      bgColor = widget.theme.activeKeyColor;
-      textColor = widget.theme.activeKeyTextColor;
-      gradient = null;
     } else if (isSpecial) {
-      bgColor = widget.theme.specialKeyColor;
+      gradient = widget.theme.specialKeyGradient;
       textColor = widget.theme.specialKeyTextColor;
     } else {
-      bgColor = widget.theme.keyBackgroundColor;
-      textColor = widget.theme.keyTextColor;
       gradient = widget.theme.primaryGradient;
+      textColor = widget.theme.keyTextColor;
     }
 
     Widget keyContent;
@@ -289,7 +282,6 @@ class _KeyboardKeyState extends State<KeyboardKey>
           margin: EdgeInsets.all(widget.theme.keySpacing / 2),
           decoration: BoxDecoration(
             gradient: gradient,
-            color: gradient == null ? bgColor : null,
             borderRadius: BorderRadius.circular(widget.theme.borderRadius),
             border: Border.all(
               color: _isPressed

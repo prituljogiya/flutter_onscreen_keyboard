@@ -38,6 +38,8 @@ class OnscreenKeyboardColors {
     this.shadow,
     this.gradientTop,
     this.gradientBottom,
+    this.gradientPressedTop,
+    this.gradientPressedBottom,
     this.keyBorderWidth = 1,
     this.borderRadius = 8,
     this.fontSize = 16,
@@ -84,6 +86,12 @@ class OnscreenKeyboardColors {
 
   /// Bottom of letter-key gradient. Defaults to [keyBackground] if omitted.
   final Color? gradientBottom;
+
+  /// Top of the gradient while a key is pressed. Defaults to [keyPressed].
+  final Color? gradientPressedTop;
+
+  /// Bottom of the pressed-key gradient. Defaults to a darker [keyPressed].
+  final Color? gradientPressedBottom;
 
   final double keyBorderWidth;
   final double borderRadius;

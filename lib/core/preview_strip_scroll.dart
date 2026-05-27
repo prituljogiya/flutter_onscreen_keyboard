@@ -41,14 +41,18 @@ void schedulePreviewStripScroll({
     final viewport = position.viewportDimension;
     final pixels = position.pixels;
 
-    if (caretX > pixels + viewport - edgeInset) {
-      scrollController.jumpTo(
-        (caretX - viewport + edgeInset).clamp(0.0, position.maxScrollExtent),
-      );
-    } else if (caretX < pixels + edgeInset) {
-      scrollController.jumpTo(
-        (caretX - edgeInset).clamp(0.0, position.maxScrollExtent),
-      );
+    try {
+      if (caretX > pixels + viewport - edgeInset) {
+        scrollController.jumpTo(
+          (caretX - viewport + edgeInset).clamp(0.0, position.maxScrollExtent),
+        );
+      } else if (caretX < pixels + edgeInset) {
+        scrollController.jumpTo(
+          (caretX - edgeInset).clamp(0.0, position.maxScrollExtent),
+        );
+      }
+    } catch (_) {
+      // Scroll attachment can lag one frame behind preview text updates.
     }
   }
 

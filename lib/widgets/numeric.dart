@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
+import '../flutter_onscreen_keyboard_init.dart';
 import '../core/numeric_range.dart';
 import '../core/preview_strip_scroll.dart';
 import '../core/numeric_keyboard_controller.dart';
@@ -75,6 +76,8 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
   late final ScrollController _previewScrollController;
   bool _suppressPreviewRefocus = false;
   bool _teardown = false;
+  KeyboardTheme? _cachedTheme;
+  bool _previewScrollScheduled = false;
 
   void _ensurePreviewSelectionAtEnd() {
     final text = _inputController.text;
@@ -92,15 +95,23 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     );
   }
 
+  /// Called from [TextEditingController] listeners — must not touch [context].
   void _syncPreviewScroll() {
-    if (_teardown || !mounted) return;
-    final theme = resolveKeyboardTheme(widget.keyboardTheme, context);
-    schedulePreviewStripScroll(
-      scrollController: _previewScrollController,
-      textController: _inputController,
-      textStyle: _previewTextStyle(theme),
-      canScroll: () => mounted && !_teardown,
-    );
+    if (_teardown || !mounted || _previewScrollScheduled) return;
+    _previewScrollScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _previewScrollScheduled = false;
+      if (_teardown || !mounted) return;
+      final theme = widget.keyboardTheme ??
+          _cachedTheme ??
+          FlutterOnscreenKeyboard.themeController.keyboardTheme;
+      schedulePreviewStripScroll(
+        scrollController: _previewScrollController,
+        textController: _inputController,
+        textStyle: _previewTextStyle(theme),
+        canScroll: () => mounted && !_teardown,
+      );
+    });
   }
 
   void _closePanel() {
@@ -288,7 +299,10 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
     return buildKeyboardWithResolvedTheme(
       widgetOverride: widget.keyboardTheme,
       context: context,
-      builder: (theme) => _buildWithTheme(context, theme),
+      builder: (theme) {
+        _cachedTheme = theme;
+        return _buildWithTheme(context, theme);
+      },
     );
   }
 
@@ -477,16 +491,18 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                 ),
               ),
             ),
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                textSelectionTheme: TextSelectionThemeData(
-                  cursorColor: caretColor,
-                  selectionColor: selectionTint,
-                  selectionHandleColor: caretColor,
+            child: Material(
+              type: MaterialType.transparency,
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  textSelectionTheme: TextSelectionThemeData(
+                    cursorColor: caretColor,
+                    selectionColor: selectionTint,
+                    selectionHandleColor: caretColor,
+                  ),
                 ),
-              ),
-              child: TextField(
-                key: const ValueKey<String>('numericKeyboardPreview'),
+                child: TextField(
+                  key: const ValueKey<String>('numericKeyboardPreview'),
                 controller: _inputController,
                 focusNode: _previewFocusNode,
                 scrollController: _previewScrollController,
@@ -507,6 +523,7 @@ class _NumericKeyboardState extends State<NumericKeyboard> {
                   contentPadding: EdgeInsets.zero,
                 ),
                 maxLines: 1,
+                ),
               ),
             ),
           ),

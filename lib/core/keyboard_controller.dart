@@ -36,7 +36,7 @@ class KeyboardController extends ChangeNotifier {
   bool _isSymbolsMode = false;
   bool _isEmojiMode = false;
   String? _validationError;
-  bool _showValidationError = false;
+  bool _hasUserEdited = false;
   String? _flashKeyId;
 
   Timer? _flashTimer;
@@ -65,9 +65,8 @@ class KeyboardController extends ChangeNotifier {
   bool get isEmojiMode => _isEmojiMode;
   String? get validationError => _validationError;
 
-  /// True only after Enter failed (not while typing).
-  bool get shouldShowValidationError =>
-      _showValidationError && _validationError != null;
+  /// True when a validation message is active (live while typing or after Enter).
+  bool get shouldShowValidationError => _validationError != null;
 
   String? get flashKeyId => _flashKeyId;
   String get text => textController.text;
@@ -166,11 +165,9 @@ class KeyboardController extends ChangeNotifier {
       return;
     }
 
+    _hasUserEdited = true;
     _applyEditingValue(newText, newSelectionOffset);
-    // The user is actively editing — any error from a previous Enter press
-    // should disappear immediately so the user gets a clean preview while
-    // typing. The full minLength / validator check runs again on Enter.
-    clearValidation();
+    _validate();
 
     // Shift is one-shot; Caps stays until the user taps Caps again (or Caps lock off).
     if (_isShiftActive) {
@@ -208,8 +205,8 @@ class KeyboardController extends ChangeNotifier {
       );
       _applyEditingValue(newText, selection.start - 1);
     }
-    // Mirror insertText: any user edit clears the stale validation error.
-    clearValidation();
+    _hasUserEdited = true;
+    _validate();
   }
 
   /// Applies text + caret in one [TextEditingValue] so the preview [TextField]
@@ -226,14 +223,10 @@ class KeyboardController extends ChangeNotifier {
 
   bool enter() {
     if (!_canEdit) return false;
-    final error = _computeEnterError();
-    if (error != null) {
-      _validationError = error;
-      _showValidationError = true;
-      notifyListeners();
+    _validate(force: true);
+    if (_validationError != null) {
       return false;
     }
-    clearValidation();
 
     onEnterPressed?.call();
     previewFocusNode?.unfocus();
@@ -339,17 +332,45 @@ class KeyboardController extends ChangeNotifier {
   void clear() {
     if (!_canEdit) return;
     textController.clear();
+    _hasUserEdited = false;
     clearValidation();
   }
 
   void clearValidation() {
-    if (_validationError == null && !_showValidationError) return;
+    final hadError = _validationError != null;
     _validationError = null;
-    _showValidationError = false;
+    _hasUserEdited = false;
+    if (hadError) notifyListeners();
+  }
+
+  void validateNow() => _validate(force: true);
+
+  void _validate({bool force = false}) {
+    if (!_canEdit) return;
+    if (!force && !_hasUserEdited) return;
+
+    final message = force ? _computeEnterError() : _computeLiveError();
+    final trimmed = message?.trim();
+    final next = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    if (_validationError == next) return;
+    _validationError = next;
     notifyListeners();
   }
 
-  void validateNow() => clearValidation();
+  /// Validation while the user types (after the first key), matching numeric pad behavior.
+  String? _computeLiveError() {
+    final value = textController.text;
+    if (value.trim().isEmpty) return null;
+
+    if (minLength != null && value.length < minLength!) {
+      return 'At least $minLength characters';
+    }
+    if (validator != null) {
+      final err = validator!(value);
+      if (err != null && err.trim().isNotEmpty) return err.trim();
+    }
+    return null;
+  }
 
   String? _computeEnterError() {
     if (!_canEdit) return null;

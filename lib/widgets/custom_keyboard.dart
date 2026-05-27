@@ -4,6 +4,7 @@ import 'package:flutter_onscreen_keyboard/core/keyboard_controller.dart';
 import 'package:flutter_onscreen_keyboard/widgets/keyboard_key.dart';
 import '../core/keyboard_chrome_layout.dart';
 import '../core/keyboard_theme_resolver.dart';
+import '../flutter_onscreen_keyboard_init.dart';
 import '../core/preview_strip_scroll.dart';
 import '../core/theme_controller.dart';
 import 'dual_key.dart';
@@ -59,6 +60,9 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   /// Skips [ _schedulePreviewCaretRefocus ] while closing so we do not refocus.
   bool _suppressPreviewRefocus = false;
   bool _teardown = false;
+  KeyboardTheme? _cachedTheme;
+  bool _cachedIsLandscape = false;
+  bool _previewScrollScheduled = false;
   void _ensurePreviewSelectionAtEnd() {
     final text = _inputController.text;
     final selection = _inputController.selection;
@@ -74,17 +78,23 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     );
   }
 
+  /// Called from [TextEditingController] listeners — must not touch [context].
   void _syncPreviewScroll() {
-    if (_teardown || !mounted) return;
-    final isLandscape = MediaQuery.maybeOrientationOf(context) ==
-        Orientation.landscape;
-    final theme = resolveKeyboardTheme(widget.keyboardTheme, context);
-    schedulePreviewStripScroll(
-      scrollController: _previewScrollController,
-      textController: _inputController,
-      textStyle: _previewTextStyle(theme, isLandscape),
-      canScroll: () => mounted && !_teardown,
-    );
+    if (_teardown || !mounted || _previewScrollScheduled) return;
+    _previewScrollScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _previewScrollScheduled = false;
+      if (_teardown || !mounted) return;
+      final theme = widget.keyboardTheme ??
+          _cachedTheme ??
+          FlutterOnscreenKeyboard.themeController.keyboardTheme;
+      schedulePreviewStripScroll(
+        scrollController: _previewScrollController,
+        textController: _inputController,
+        textStyle: _previewTextStyle(theme, _cachedIsLandscape),
+        canScroll: () => mounted && !_teardown,
+      );
+    });
   }
 
   void _closePanel() {
@@ -209,11 +219,21 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _cachedIsLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return buildKeyboardWithResolvedTheme(
       widgetOverride: widget.keyboardTheme,
       context: context,
-      builder: (theme) => _buildKeyboardShell(context, theme),
+      builder: (theme) {
+        _cachedTheme = theme;
+        return _buildKeyboardShell(context, theme);
+      },
     );
   }
 
@@ -229,11 +249,9 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     return ListenableBuilder(
       listenable: _keyboardController,
       builder: (context, _) {
-        final err = _keyboardController.shouldShowValidationError
-            ? _keyboardController.validationError
-            : null;
+        final raw = _keyboardController.validationError;
         final errorText =
-            err != null && err.trim().isNotEmpty ? err.trim() : null;
+            raw != null && raw.trim().isNotEmpty ? raw.trim() : null;
         final showError = errorText != null;
         final showBounds = hasBounds;
         final panelHeight = KeyboardChromeLayout.customPanelHeight(
@@ -264,22 +282,22 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                 caretColor: caretColor,
                 selectionTint: selectionTint,
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 2, 10, 2),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    errorText ?? "",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.redAccent,
-                      fontSize: 12,
-                      height: 1.2,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 2, 10, 2),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      errorText ?? "",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
+                        height: 1.2,
+                      ),
                     ),
                   ),
                 ),
-              ),
               Expanded(
                 child: Listener(
                   behavior: HitTestBehavior.translucent,
@@ -354,15 +372,17 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                 ),
               ),
             ),
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                textSelectionTheme: TextSelectionThemeData(
-                  cursorColor: caretColor,
-                  selectionColor: selectionTint,
-                  selectionHandleColor: caretColor,
+            child: Material(
+              type: MaterialType.transparency,
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  textSelectionTheme: TextSelectionThemeData(
+                    cursorColor: caretColor,
+                    selectionColor: selectionTint,
+                    selectionHandleColor: caretColor,
+                  ),
                 ),
-              ),
-              child: TextField(
+                child: TextField(
                 key: const ValueKey<String>('customKeyboardPreview'),
                 controller: _inputController,
                 focusNode: _previewFocusNode,
@@ -384,6 +404,7 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                   contentPadding: EdgeInsets.zero,
                 ),
                 maxLines: 1,
+                ),
               ),
             ),
           ),
