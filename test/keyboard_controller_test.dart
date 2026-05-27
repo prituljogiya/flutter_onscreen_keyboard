@@ -40,44 +40,30 @@ void main() {
       c.dispose();
     });
 
-    test('minLength validates on Enter only', () {
+    test('minLength shows live error while typing after first key', () {
       final text = TextEditingController();
       final c = newController(text: text, minLength: 3);
-      c.insertText('ab');
-      expect(c.shouldShowValidationError, isFalse);
+      expect(c.validationError, isNull);
 
-      expect(c.enter(), isFalse);
-      expect(c.shouldShowValidationError, isTrue);
+      c.insertText('ab');
       expect(c.validationError, 'At least 3 characters');
 
-      c.clearValidation();
       c.insertText('c');
+      expect(c.validationError, isNull);
       expect(c.enter(), isTrue);
       c.dispose();
     });
 
-    test('typing clears a previously-surfaced validation error', () {
-      // Repro of the user-visible bug: press Enter on empty/short text → the
-      // "At least 3 characters" error appears; the user then starts typing
-      // and the stale error must disappear immediately.
+    test('live validation clears when text becomes valid', () {
       final text = TextEditingController();
       final c = newController(text: text, minLength: 3);
 
       expect(c.enter(), isFalse);
-      expect(c.shouldShowValidationError, isTrue);
       expect(c.validationError, 'At least 3 characters');
 
-      c.insertText('a');
-      expect(c.shouldShowValidationError, isFalse,
-          reason: 'typing must clear the stale alpha error');
+      c.insertText('abc');
       expect(c.validationError, isNull);
-
-      // Backspace also clears the error.
-      expect(c.enter(), isFalse); // still short → re-shows error
-      expect(c.shouldShowValidationError, isTrue);
-      c.backspace();
-      expect(c.shouldShowValidationError, isFalse,
-          reason: 'backspace must clear the stale alpha error too');
+      expect(c.enter(), isTrue);
 
       c.dispose();
     });
@@ -91,18 +77,18 @@ void main() {
       c.dispose();
     });
 
-    test('validator runs on Enter', () {
+    test('validator runs live while typing and on Enter', () {
       final text = TextEditingController();
       final c = newController(
         text: text,
         validator: OnscreenKeyboardValidators.email,
       );
       c.insertText('bad');
-      expect(c.enter(), isFalse);
       expect(c.validationError, 'Enter a valid email');
 
-      c.clearValidation();
+      c.clear();
       c.insertText('user@example.com');
+      expect(c.validationError, isNull);
       expect(c.enter(), isTrue);
       c.dispose();
     });

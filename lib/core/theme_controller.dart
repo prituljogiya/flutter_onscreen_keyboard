@@ -142,6 +142,8 @@ class KeyboardTheme {
   final double keyElevation;
   final Color shadowColor;
   final Gradient primaryGradient;
+  final Gradient pressedGradient;
+  final Gradient specialKeyGradient;
   final Color previewBackgroundColor;
   final Color previewTextColor;
   final Color previewBorderColor;
@@ -153,6 +155,13 @@ class KeyboardTheme {
     final shadow = colors.shadow ?? Colors.black.withValues(alpha: 0.4);
     final gradientTop = colors.gradientTop ?? colors.keyBackground;
     final gradientBottom = colors.gradientBottom ?? colors.keyBackground;
+    final pressedBase = colors.keyPressed ?? colors.activeKey;
+    final pressedTop = colors.gradientPressedTop ?? pressedBase;
+    final pressedBottom = colors.gradientPressedBottom ??
+        Color.lerp(pressedBase, Colors.black, 0.22)!;
+    final specialTop = colors.specialKeyBackground;
+    final specialBottom =
+        Color.lerp(specialTop, Colors.black, 0.14) ?? specialTop;
     final previewText = colors.previewText ?? colors.keyText;
     final previewBackground =
         colors.previewBackground ?? colors.keyBackground;
@@ -180,6 +189,16 @@ class KeyboardTheme {
         end: Alignment.bottomCenter,
         colors: [gradientTop, gradientBottom],
       ),
+      pressedGradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [pressedTop, pressedBottom],
+      ),
+      specialKeyGradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [specialTop, specialBottom],
+      ),
       previewBackgroundColor: previewBackground,
       previewTextColor: previewText,
       previewBorderColor: previewBorder,
@@ -204,6 +223,8 @@ class KeyboardTheme {
     required this.keyElevation,
     required this.shadowColor,
     required this.primaryGradient,
+    required this.pressedGradient,
+    required this.specialKeyGradient,
     required this.previewBackgroundColor,
     required this.previewTextColor,
     required this.previewBorderColor,
@@ -237,6 +258,22 @@ class KeyboardTheme {
         colors: [
           Color(0xFF4A1A6B),
           Color(0xFF2D0A4A),
+        ],
+      ),
+      pressedGradient: const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFF3DD68C),
+          Color(0xFF1F8F5A),
+        ],
+      ),
+      specialKeyGradient: const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFF5A2480),
+          Color(0xFF3A1558),
         ],
       ),
       previewBackgroundColor: keyBg,
@@ -280,6 +317,22 @@ class KeyboardTheme {
           Color(0xFFF3E5F5),
         ],
       ),
+      pressedGradient: const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFF4CD68A),
+          Color(0xFF2E9E63),
+        ],
+      ),
+      specialKeyGradient: const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFFAB47BC),
+          Color(0xFF7B1FA2),
+        ],
+      ),
       previewBackgroundColor: keyBg,
       previewTextColor: keyText,
       previewBorderColor: border,
@@ -304,6 +357,8 @@ class KeyboardTheme {
     double? keyElevation,
     Color? shadowColor,
     Gradient? primaryGradient,
+    Gradient? pressedGradient,
+    Gradient? specialKeyGradient,
     Color? previewBackgroundColor,
     Color? previewTextColor,
     Color? previewBorderColor,
@@ -326,6 +381,8 @@ class KeyboardTheme {
       keyElevation: keyElevation ?? this.keyElevation,
       shadowColor: shadowColor ?? this.shadowColor,
       primaryGradient: primaryGradient ?? this.primaryGradient,
+      pressedGradient: pressedGradient ?? this.pressedGradient,
+      specialKeyGradient: specialKeyGradient ?? this.specialKeyGradient,
       previewBackgroundColor:
           previewBackgroundColor ?? this.previewBackgroundColor,
       previewTextColor: previewTextColor ?? this.previewTextColor,

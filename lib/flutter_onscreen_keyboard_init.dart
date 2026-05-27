@@ -103,9 +103,17 @@ class OnscreenKeyboardThemeScope extends InheritedNotifier<ThemeController> {
     required super.child,
   }) : super(notifier: controller);
 
+  /// During [State.build] only — registers a dependency for rebuilds.
   static ThemeController? maybeOf(BuildContext context) {
     final scope =
         context.dependOnInheritedWidgetOfExactType<OnscreenKeyboardThemeScope>();
+    return scope?.notifier;
+  }
+
+  /// Safe from listeners / callbacks (no inherited dependency registered).
+  static ThemeController? read(BuildContext context) {
+    final scope =
+        context.getInheritedWidgetOfExactType<OnscreenKeyboardThemeScope>();
     return scope?.notifier;
   }
 }

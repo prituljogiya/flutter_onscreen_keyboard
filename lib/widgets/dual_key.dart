@@ -194,14 +194,7 @@ class _DualKeyState extends State<DualKey> with SingleTickerProviderStateMixin {
           margin: EdgeInsets.all(widget.theme.keySpacing / 2),
           decoration: BoxDecoration(
             gradient: _isPressed
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      widget.theme.keyPressedColor,
-                      widget.theme.keyPressedColor,
-                    ],
-                  )
+                ? widget.theme.pressedGradient
                 : widget.theme.primaryGradient,
             borderRadius: BorderRadius.circular(widget.theme.borderRadius),
             border: Border.all(
